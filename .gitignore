@@ -1,0 +1,24 @@
+# Downloaded inputs and reproducible intermediate output
+data/raw/
+build/
+
+# Python environments and caches
+.venv/
+venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+
+# Local tooling and browser verification output
+node_modules/
+playwright-report/
+test-results/
+*.log
+*.tmp
+
+# Local secrets and OS metadata
+.env
+.env.*
+!.env.example
+.DS_Store
+Thumbs.db

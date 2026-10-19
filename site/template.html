@@ -1,0 +1,1818 @@
+<title>ENSO Storm Atlas</title>
+<script>
+// Restore the saved palette before the first paint, even before the chart library loads.
+try { document.documentElement.dataset.theme = localStorage.getItem('enso-atlas-theme') === 'light' ? 'light' : 'dark'; }
+catch (e) { document.documentElement.dataset.theme = 'dark'; }
+</script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;500;600;700&display=swap">
+<style>
+/* Layout: product-page rhythm. One centered 1080px column, generous section spacing, full-width map plates within glass section surfaces, quiet gray cards. Color is reserved for data: warm = El Niño, cool = La Niña. Switchable dark and light palettes. */
+:root {
+  color-scheme: dark;
+  --bg: #000000;
+  --card: #141416;
+  --card-2: #1c1c1e;
+  --hair: rgba(255,255,255,.08);
+  --ink: #f5f5f7;
+  --ink-2: #a1a1a6;
+  --muted: #6e6e73;
+  --nino: #ff7a50;
+  --nina: #5ab0ff;
+  --neutral: #8e8e93;
+  --land: #222225;
+  --coast: #3a3a3e;
+  --sea-1: #0b0b0c;
+  --sea-2: #050505;
+  --land-dot: #1c1c1e;
+  --line: rgba(255,255,255,.07);
+  --line-2: rgba(255,255,255,.16);
+  --panel: #141416;
+  --c0: #f2f2f7; --c1: #ffd60a; --c2: #ff9f0a; --c3: #ff6b3d; --c4: #ff375f; --c5: #bf5af2;
+  --f: -apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text", "PingFang SC", "Noto Sans SC", "Helvetica Neue", "Microsoft YaHei", sans-serif;
+}
+/* Shared surface colors also feed the SVG and canvas renderers. */
+:root { --surface-rgb: 255,255,255; --on-ink: #000; --hover: #2c2c2e; --selected: #3a3a3c; --halo: rgba(0,0,0,.8); --grid: rgba(255,255,255,.035); }
+:root[data-theme="light"] {
+  color-scheme: light;
+  --bg: #f5f6f8; --card: #ffffff; --card-2: #e9ecf1;
+  --hair: rgba(25,35,50,.12); --ink: #19212c; --ink-2: #505e6e; --muted: #626f7f;
+  --nino: #b94320; --nina: #1768ae; --neutral: #6f7886;
+  --land: #e1e7ed; --coast: #9ba9b7; --land-dot: #a8b4c1;
+  --sea-1: #f9fbfd; --sea-2: #edf2f7;
+  --line: rgba(25,35,50,.09); --line-2: rgba(25,35,50,.24); --panel: #fff;
+  --surface-rgb: 25,35,50; --on-ink: #fff; --hover: #dde3eb; --selected: #fff;
+  --halo: rgba(255,255,255,.9); --grid: rgba(25,35,50,.07); --c0: #a8b3c3;
+}
+* { box-sizing: border-box; }
+html { background: var(--bg); -webkit-font-smoothing: antialiased; }
+body { background: var(--bg); color: var(--ink); font-family: var(--f); font-size: 16px; line-height: 1.55; letter-spacing: -.01em; overflow-x: hidden; }
+.wrap { max-width: 1080px; margin: 0 auto; padding-inline: 22px; padding-block: 0 96px; }
+button { font: inherit; color: inherit; }
+.mono { font-variant-numeric: tabular-nums; }
+.k-nino { color: var(--nino); } .k-nina { color: var(--nina); }
+
+.top { position: sticky; top: env(safe-area-inset-top, 0px); z-index: 30; display: flex; align-items: center; gap: 10px 20px; flex-wrap: wrap; padding: 10px 22px; margin-inline: -22px;
+  background: rgba(0,0,0,.72); backdrop-filter: saturate(180%) blur(20px); -webkit-backdrop-filter: saturate(180%) blur(20px); border-bottom: 1px solid var(--hair); }
+.brand { font-weight: 600; font-size: 17px; white-space: nowrap; }
+.ctrls { display: flex; gap: 8px 16px; flex-wrap: wrap; margin-left: auto; }
+.seg { display: inline-flex; align-items: center; gap: 8px; }
+.seg > span { font-size: 13px; color: var(--muted); }
+.selline { font-size: 14px; color: var(--ink-2); min-height: 1.6em; }
+.selline b { color: var(--ink); font-weight: 600; }
+html:lang(en) { --f: -apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text", "Segoe UI", "Helvetica Neue", Arial, "Noto Sans SC", sans-serif; }
+.seg .opts { display: inline-flex; border-radius: 9px; padding: 2px; background: var(--card-2); }
+.seg input { position: absolute; opacity: 0; pointer-events: none; }
+.seg label { font-size: 14px; padding: 5px 12px; border-radius: 7px; cursor: pointer; color: var(--ink-2); white-space: nowrap; }
+.seg input:checked + label { background: var(--selected); color: var(--ink); font-weight: 500; }
+.seg input:focus-visible + label { outline: 2px solid var(--nina); outline-offset: 1px; }
+@media (max-width: 600px) {
+  .ctrls { width: 100%; margin-left: 0; gap: 8px 12px; }
+  .seg { min-width: 0; max-width: 100%; }
+  .seg > span { flex-shrink: 0; }
+  .seg .opts { min-width: 0; }
+  .seg label { min-width: 0; padding-inline: 8px; white-space: normal; text-align: center; }
+}
+
+.kicker { font-size: 14px; font-weight: 600; color: var(--ink-2); }
+h1, h2 { margin: 0; font-weight: 700; text-wrap: balance; letter-spacing: -.03em; }
+h1 { font-size: clamp(42px, 7vw, 80px); line-height: 1.05; }
+h1 .hot { color: var(--nino); } h1 .cold { color: var(--nina); }
+h2 { font-size: clamp(32px, 4.6vw, 52px); line-height: 1.1; }
+.sub { color: var(--ink-2); max-width: 36em; font-size: 18px; line-height: 1.75; }
+.sec-head { display: grid; gap: 14px; margin-bottom: 36px; }
+.sec-head .idx { font-size: 14px; font-weight: 600; color: var(--muted); }
+/* One glass surface per main section; the overlay leaves chart widths and hit targets intact. */
+section {
+  --section-top: 128px;
+  --glass-inset: 32px;
+  --glass-gutter: 32px;
+  position: relative;
+  isolation: isolate;
+  padding-block: var(--section-top) 0;
+}
+section::before {
+  content: "";
+  position: absolute;
+  z-index: -1;
+  pointer-events: none;
+  inset: calc(var(--section-top) - var(--glass-inset)) calc(-1 * var(--glass-gutter)) calc(-1 * var(--glass-inset));
+  border-radius: 32px;
+  border: 1px solid rgba(255,255,255,.24);
+  background: linear-gradient(135deg, rgba(255,255,255,.10), rgba(255,255,255,.015) 45%, rgba(255,255,255,.055)), rgba(26,31,41,.22);
+  box-shadow: inset 0 1.5px 1px rgba(255,255,255,.24), inset 0 -1px 1px rgba(255,255,255,.08), 0 20px 60px rgba(0,0,0,.24);
+  -webkit-backdrop-filter: blur(28px) saturate(150%);
+  backdrop-filter: blur(28px) saturate(150%);
+}
+section.hero { --section-top: 88px; }
+@media (max-width: 1199px) { section { --glass-gutter: 14px; } }
+@media (max-width: 600px) {
+  section { --glass-inset: 24px; --glass-gutter: 10px; }
+  section::before { border-radius: 24px; }
+}
+@media (prefers-reduced-transparency: reduce) {
+  section::before { background: #191a1e; -webkit-backdrop-filter: none; backdrop-filter: none; }
+}
+
+.hero { padding-block: 88px 0; display: grid; gap: 40px; }
+.hero-top { display: flex; justify-content: space-between; align-items: flex-end; gap: 28px; flex-wrap: wrap; }
+.hero-top > div { display: grid; gap: 18px; min-width: 0; }
+.now { display: inline-grid; gap: 4px; text-align: left; cursor: pointer; padding: 16px 20px; border-radius: 18px; border: 0; background: var(--card); max-width: 320px; transition: background .2s; }
+.now:hover { background: var(--card-2); }
+.now:focus-visible { outline: 2px solid var(--nino); outline-offset: 2px; }
+.now .l1 { font-size: 12px; font-weight: 600; color: var(--nino); display: flex; align-items: center; gap: 6px; }
+.now .l1 i { width: 6px; height: 6px; border-radius: 50%; background: var(--nino); }
+.now .l2 { font-weight: 700; font-size: 24px; letter-spacing: -.02em; font-variant-numeric: tabular-nums; }
+.now .l3 { font-size: 13px; color: var(--ink-2); }
+
+.deck { display: grid; grid-template-columns: minmax(0, 1fr) 236px; gap: 16px; }
+@media (max-width: 920px) { .deck { grid-template-columns: 1fr; } }
+.map { position: relative; width: 100%; aspect-ratio: 97 / 52; max-width: 100%; border-radius: 22px; overflow: hidden; background: var(--sea-2); }
+.map canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+.map canvas.hit { cursor: crosshair; touch-action: pan-y; }
+.tag { position: absolute; z-index: 3; font-size: 12px; color: var(--muted); pointer-events: none; font-variant-numeric: tabular-nums; }
+.tag.tl { top: 16px; left: 20px; } .tag.bl { bottom: 14px; left: 20px; }
+
+.hud { display: grid; gap: 1px; align-content: start; background: var(--hair); border-radius: 18px; overflow: hidden; }
+@media (max-width: 920px) { .hud { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+.stat { background: var(--card); padding: 14px 18px; display: grid; gap: 2px; min-width: 0; }
+.stat .lab { font-size: 12.5px; color: var(--ink-2); }
+.stat .val { font-weight: 600; font-size: 30px; line-height: 1.15; letter-spacing: -.02em; font-variant-numeric: tabular-nums; }
+.stat .val small { font-size: 14px; color: var(--ink-2); font-weight: 500; margin-left: 2px; }
+.stat .dl { font-size: 12px; color: var(--muted); font-variant-numeric: tabular-nums; }
+.stat .dl b.up { color: var(--nina); font-weight: 600; } .stat .dl b.dn { color: var(--nino); font-weight: 600; }
+.stat.sel .val { font-size: 19px; }
+
+.dial { display: grid; gap: 10px; }
+.chips { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.chips > span { font-size: 13px; color: var(--muted); margin-right: 4px; }
+.chip { cursor: pointer; font-size: 13px; padding: 6px 14px; border-radius: 999px; border: 0; background: var(--card-2); color: var(--ink-2); transition: background .15s, color .15s; }
+.chip:hover { color: var(--ink); background: var(--hover); }
+.chip.on { background: var(--ink); color: var(--on-ink); font-weight: 500; }
+.chip:focus-visible { outline: 2px solid var(--nina); outline-offset: 2px; }
+#swarm { width: 100%; height: 150px; display: block; touch-action: pan-y; }
+#swarm .selection { fill: var(--ink); fill-opacity: .05; stroke: var(--ink); stroke-opacity: .5; }
+#swarm .handle { fill: var(--ink); fill-opacity: .9; rx: 2; }
+.hint { font-size: 14px; line-height: 1.75; color: var(--muted); }
+
+.duel { display: grid; background: var(--card); border-radius: 22px; padding: 8px 28px; }
+.drow { display: grid; grid-template-columns: 120px minmax(0, 1fr) 170px minmax(0, 1fr) 120px; align-items: center; gap: 18px; padding-block: 22px; border-top: 1px solid var(--hair); }
+.drow:first-of-type { border-top: 0; }
+.drow .v { font-weight: 600; font-size: clamp(30px, 3.6vw, 44px); letter-spacing: -.03em; font-variant-numeric: tabular-nums; line-height: 1; }
+.drow .v.l { color: var(--nina); text-align: right; } .drow .v.r { color: var(--nino); }
+.drow .bar { height: 6px; border-radius: 3px; background: rgba(var(--surface-rgb),.06); position: relative; overflow: hidden; }
+.drow .bar i { position: absolute; top: 0; bottom: 0; border-radius: 3px; }
+.drow .bar.l i { right: 0; background: var(--nina); } .drow .bar.r i { left: 0; background: var(--nino); }
+@media (prefers-reduced-motion: no-preference) { .drow .bar i { transition: width .7s cubic-bezier(.25,.1,.25,1); } }
+.drow .mid { text-align: center; display: grid; gap: 2px; }
+.drow .mid .n { font-size: 14px; color: var(--ink-2); }
+.drow .mid .x { font-size: 20px; font-weight: 600; font-variant-numeric: tabular-nums; }
+.drow .mid .p { font-size: 12px; color: var(--muted); }
+.drow .mid .p.ok { color: var(--ink-2); }
+.duel-head { display: grid; grid-template-columns: 1fr 1fr; padding-block: 18px 4px; font-size: 13px; font-weight: 600; }
+.duel-head span:last-child { text-align: right; }
+@media (max-width: 760px) {
+  .duel { padding: 8px 18px; }
+  .drow { grid-template-columns: 1fr 1fr; gap: 8px 12px; }
+  .drow .mid { grid-column: 1 / -1; order: -1; }
+  .drow .bar { display: none; }
+  .drow .v.l { text-align: left; } .drow .v.r { text-align: right; }
+}
+
+.wipe-handle { position: absolute; z-index: 4; top: 84%; width: 36px; height: 36px; margin: -18px 0 0 -18px; border-radius: 50%; border: 0; background: #fff; color: #000; cursor: ew-resize; display: grid; place-items: center; font-size: 13px; box-shadow: 0 2px 10px rgba(0,0,0,.5); touch-action: none; }
+.wipe-handle[hidden] { display: none; }
+.wipe-handle:focus-visible { outline: 2px solid var(--nina); outline-offset: 3px; }
+.wlab { position: absolute; z-index: 3; top: 18px; font-size: 15px; font-weight: 600; pointer-events: none; }
+.legend-row { display: flex; flex-wrap: wrap; gap: 8px 22px; align-items: center; font-size: 13px; color: var(--ink-2); margin-top: 14px; }
+.legend-row .ramp { width: 120px; height: 6px; border-radius: 3px; }
+
+.rp { display: grid; grid-template-columns: minmax(0, 1fr) 260px; gap: 16px; }
+@media (max-width: 920px) { .rp { grid-template-columns: 1fr; } }
+.rp-bar { display: flex; flex-wrap: wrap; gap: 12px 18px; align-items: center; margin-bottom: 16px; }
+.yearbox { display: flex; align-items: center; gap: 12px; }
+.yearbox .yr { font-weight: 700; font-size: 44px; letter-spacing: -.03em; line-height: 1; min-width: 3ch; text-align: center; font-variant-numeric: tabular-nums; }
+.ib { width: 34px; height: 34px; border-radius: 50%; border: 0; background: var(--card-2); cursor: pointer; display: grid; place-items: center; font-size: 18px; color: var(--ink-2); }
+.ib:hover { background: var(--hover); color: var(--ink); }
+.ib:focus-visible, .play:focus-visible { outline: 2px solid var(--nina); outline-offset: 2px; }
+.badge { font-size: 13px; font-weight: 500; }
+.play { display: inline-flex; align-items: center; gap: 8px; cursor: pointer; padding: 8px 18px; border-radius: 999px; border: 0; background: var(--ink); color: var(--on-ink); font-weight: 600; font-size: 14px; }
+.clock { font-size: 15px; color: var(--ink-2); font-variant-numeric: tabular-nums; }
+.clock b { color: var(--ink); font-weight: 600; }
+#rpScrub { width: 100%; accent-color: var(--ink); margin: 14px 0 0; }
+.rp-side { display: grid; gap: 16px; align-content: start; min-width: 0; }
+.rp-side .hud { grid-template-columns: 1fr 1fr; }
+.rp-side .stat .val { font-size: 26px; }
+.slist { background: var(--card); border-radius: 18px; padding: 6px; max-height: 360px; overflow-y: auto; display: grid; gap: 1px; scrollbar-width: thin; }
+.si { display: grid; grid-template-columns: 30px minmax(0, 1fr) auto; gap: 10px; align-items: center; padding: 7px 10px; border-radius: 10px; font-size: 14px; color: var(--muted); cursor: pointer; border: 0; background: none; text-align: left; width: 100%; }
+.si .cb { font-size: 10.5px; font-weight: 600; text-align: center; border-radius: 5px; padding: 1px 0; color: #000; opacity: .35; }
+.si .nm { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.si .dt { font-size: 12px; font-variant-numeric: tabular-nums; }
+.si.born { color: var(--ink-2); } .si.born .cb { opacity: 1; }
+.si.live { color: var(--ink); } .si.live .nm { font-weight: 600; }
+.si:hover, .si.pick { background: var(--card-2); color: var(--ink); }
+.si:focus-visible { outline: 2px solid var(--nina); }
+.catlegend { display: flex; gap: 14px; flex-wrap: wrap; font-size: 12px; color: var(--ink-2); margin-top: 12px; }
+.catlegend i { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 5px; vertical-align: 1px; }
+
+.types { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 16px; }
+.tcard { background: var(--card); border-radius: 22px; padding: 18px; display: grid; gap: 14px; align-content: start; min-width: 0; }
+.tcard .map { aspect-ratio: 97 / 58; border-radius: 14px; }
+.tcard h3 { margin: 0; font-weight: 600; font-size: 19px; letter-spacing: -.02em; }
+.tcard .tl { font-size: 15px; color: var(--ink-2); margin: 4px 0 0; }
+.tcard .big { display: flex; align-items: baseline; gap: 10px; }
+.tcard .big b { font-weight: 600; font-size: 36px; letter-spacing: -.03em; line-height: 1; }
+.tcard .big span { font-size: 12.5px; color: var(--muted); }
+.tb { display: grid; gap: 7px; }
+.tb .r { display: grid; grid-template-columns: 52px minmax(0, 1fr) 30px; gap: 10px; align-items: center; font-size: 12.5px; color: var(--ink-2); }
+.tb .t { height: 6px; border-radius: 3px; background: rgba(var(--surface-rgb),.06); overflow: hidden; }
+.tb .t i { display: block; height: 100%; border-radius: 3px; }
+.tb .n { text-align: right; color: var(--ink); font-variant-numeric: tabular-nums; }
+@media (prefers-reduced-motion: no-preference) { .tb .t i { transition: width .6s ease; } }
+
+.fp { display: grid; grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr); gap: 16px; }
+@media (max-width: 920px) { .fp { grid-template-columns: 1fr; } }
+.box { background: var(--card); border-radius: 22px; padding: 24px; min-width: 0; }
+.box h3 { margin: 0 0 12px; font-size: 18px; font-weight: 600; }
+#radar { width: 100%; max-width: 500px; display: block; margin: 0 auto; aspect-ratio: 1; overflow: visible; }
+.finds { display: grid; gap: 12px; margin-top: 10px; }
+.find { display: grid; grid-template-columns: 6px minmax(0, 1fr); gap: 12px; font-size: 15.5px; color: var(--ink-2); }
+.find::before { content: ""; width: 6px; height: 6px; margin-top: 9px; border-radius: 50%; background: var(--ink-2); }
+.find b { color: var(--ink); font-weight: 600; }
+.verdicts { display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 16px; }
+.vcard { background: var(--card); border-radius: 22px; padding: 20px 22px; display: grid; gap: 6px; align-content: start; }
+.vcard .k { font-size: 13px; color: var(--ink-2); }
+.vcard .v { font-size: 34px; font-weight: 600; letter-spacing: -.03em; line-height: 1.1; font-variant-numeric: tabular-nums; }
+.vcard .s { font-size: 14px; color: var(--muted); }
+.pill { justify-self: start; margin-top: 6px; font-size: 12px; padding: 3px 10px; border-radius: 999px; background: var(--card-2); color: var(--muted); }
+.pill.ok { color: var(--ink); }
+.step { margin-top: 64px; display: grid; gap: 16px; }
+.stephead { display: flex; gap: 14px; align-items: flex-start; }
+.stepn { width: 28px; height: 28px; border-radius: 50%; background: var(--card-2); display: grid; place-items: center; font-weight: 600; font-size: 14px; flex-shrink: 0; margin-top: 2px; }
+.stephead h3 { margin: 0 0 6px; font-size: 22px; font-weight: 600; letter-spacing: -.02em; }
+.stephead p { margin: 0; color: var(--ink-2); max-width: 44em; font-size: 16px; line-height: 1.75; }
+.exgrid { display: grid; grid-template-columns: minmax(0, 1fr) 300px; gap: 16px; }
+@media (max-width: 920px) { .exgrid { grid-template-columns: 1fr; } }
+.exlist { background: var(--card); border-radius: 18px; padding: 6px 0; display: grid; align-content: start; }
+.exhead { padding: 10px 16px 12px; display: grid; gap: 2px; }
+.exhead b { font-size: 17px; } .exhead span { font-size: 12.5px; color: var(--muted); }
+.exrow { display: grid; grid-template-columns: 40px minmax(0, 1fr) auto; gap: 2px 10px; padding: 8px 16px; border-top: 1px solid var(--hair); align-items: baseline; }
+.exrow .o { font-size: 11.5px; color: var(--muted); }
+.exrow .n { font-size: 13px; color: var(--ink); }
+.exrow .val { font-size: 13px; font-weight: 600; font-variant-numeric: tabular-nums; }
+.exrow .i { grid-column: 2 / -1; font-size: 13.5px; color: var(--ink-2); }
+#exMap { aspect-ratio: 4 / 3; }
+#ridges { width: 100%; display: block; overflow: visible; }
+.lg-dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 3px; vertical-align: 1px; }
+.lg-ell { display: inline-block; width: 18px; height: 10px; border-radius: 50%; border: 1.5px solid var(--ink-2); vertical-align: -1px; }
+details.minor { margin-top: 28px; border-top: 1px solid var(--hair); border-bottom: 1px solid var(--hair); }
+details.minor summary { cursor: pointer; padding: 14px 0; font-size: 14px; font-weight: 600; color: var(--ink-2); list-style: none; display: flex; justify-content: space-between; }
+details.minor summary::-webkit-details-marker { display: none; }
+details.minor summary::after { content: "+"; color: var(--muted); font-weight: 400; }
+details.minor[open] summary::after { content: "−"; }
+.mtable { overflow-x: auto; padding-bottom: 16px; }
+.mtable table { width: 100%; border-collapse: collapse; font-size: 13px; font-variant-numeric: tabular-nums; }
+.mtable th, .mtable td { padding: 8px 10px; border-top: 1px solid var(--hair); text-align: right; white-space: nowrap; }
+.mtable th:nth-child(-n+2), .mtable td:nth-child(-n+2) { text-align: left; }
+.mtable th { color: var(--muted); font-weight: 500; border-top: 0; }
+.mtable .mut { color: var(--muted); } .mtable .sigc { color: var(--ink); font-weight: 600; }
+.lg-bar { display: inline-block; width: 18px; height: 8px; border-radius: 4px; background: rgba(var(--surface-rgb),.14); vertical-align: 0; }
+.lg-o { display: inline-block; width: 9px; height: 9px; border-radius: 50%; border: 1.5px solid var(--ink); vertical-align: -1px; }
+.lg-o.filled { background: var(--ink); }
+.calcount { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 16px; margin-bottom: 18px; }
+@media (max-width: 600px) { .calcount { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+.ccount { display: grid; gap: 2px; }
+.ccount .n { font-size: 44px; font-weight: 700; letter-spacing: -.03em; line-height: 1; font-variant-numeric: tabular-nums; }
+.ccount .l { font-size: 13px; color: var(--ink-2); }
+#typeShiftMap { aspect-ratio: 16 / 10; }
+#cal, #catScale, #decSvg { width: 100%; display: block; overflow: visible; }
+.lg-sq { display: inline-block; width: 10px; height: 10px; border-radius: 3px; vertical-align: -1px; }
+/* desktop: map and conclusion stacked on the left, decomposition box spanning both rows on the right;
+   the second row takes any extra height so the conclusion sits right under the map */
+.grid4 { display: grid; grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr); grid-template-rows: auto 1fr; grid-template-areas: "map box" "concl box"; gap: 16px; align-items: start; }
+.grid4 > .map { grid-area: map; }
+.grid4 > .box { grid-area: box; align-self: stretch; }
+.grid4 > .conclusion { grid-area: concl; align-self: stretch; align-content: start; margin-top: 0; padding: 26px 28px; }
+.grid4 > .conclusion h3 { font-size: clamp(20px, 2.2vw, 24px); }
+.grid4 > .conclusion p { font-size: 16.5px; line-height: 1.8; }
+/* Share the available card height across the table rows; keep the method note at the bottom. */
+@media (min-width: 921px) {
+  .grid4 > .box { display: flex; flex-direction: column; }
+  .grid4 > .box > h3, .grid4 > .box > svg, .grid4 > .box > .hint { flex: none; }
+  .grid4 #robTable { display: flex; flex-direction: column; flex: 1 0 auto; }
+  .grid4 #robTable table { flex: 1 0 auto; font-size: 14px; }
+  .grid4 #robTable th, .grid4 #robTable td { padding: 10px; vertical-align: middle; }
+  .grid4 #robTable .sm { font-size: 12px; }
+  .grid4 > .box > .hint { line-height: 1.7; }
+}
+@media (max-width: 920px) { .grid4 { grid-template-columns: 1fr; grid-template-rows: auto; grid-template-areas: "map" "box" "concl"; } }
+#robTable th, #robTable td { white-space: normal; vertical-align: top; }
+#robTable .sm { display: block; font-size: 11px; font-weight: 400; }
+.mtable tr.cur td { color: var(--ink); background: rgba(var(--surface-rgb),.04); }
+.conclusion { margin-top: 72px; background: var(--card); border-radius: 22px; padding: 32px; display: grid; gap: 12px; }
+.conclusion .idx { font-size: 14px; font-weight: 600; color: var(--muted); }
+.conclusion h3 { margin: 0; font-size: clamp(22px, 3vw, 30px); font-weight: 700; letter-spacing: -.02em; }
+.conclusion p { margin: 0; color: var(--ink-2); font-size: 17px; line-height: 1.7; max-width: 46em; }
+#coin { width: 100%; display: block; overflow: visible; }
+.coinbig { display: flex; align-items: baseline; gap: 12px; flex-wrap: wrap; margin: 8px 0 6px; }
+.coinbig b { font-size: 52px; font-weight: 700; letter-spacing: -.04em; line-height: 1; }
+.coinbig span { color: var(--ink-2); font-size: 14px; }
+
+details.method { margin-top: 128px; border-top: 1px solid var(--hair); border-bottom: 1px solid var(--hair); }
+details.method summary { cursor: pointer; padding: 18px 0; font-weight: 600; list-style: none; display: flex; justify-content: space-between; gap: 10px; }
+details.method summary::-webkit-details-marker { display: none; }
+details.method summary::after { content: "+"; color: var(--muted); font-weight: 400; font-size: 20px; line-height: 1; }
+details.method[open] summary::after { content: "−"; }
+details.method summary:focus-visible { outline: 2px solid var(--nina); }
+.mgrid { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 28px; padding-bottom: 24px; }
+.mgrid h4 { margin: 0 0 8px; font-size: 13px; color: var(--ink); font-weight: 600; }
+.mgrid ul { margin: 0; padding-left: 16px; color: var(--ink-2); font-size: 14px; line-height: 1.75; display: grid; gap: 6px; }
+.mgrid code { font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace; font-size: 12px; }
+footer { margin-top: 24px; font-size: 12px; color: var(--muted); display: grid; gap: 4px; }
+
+#tip { position: fixed; z-index: 50; pointer-events: none; background: rgba(40,40,42,.92); color: var(--ink); border-radius: 12px; padding: 10px 12px; font-size: 13px; line-height: 1.5; box-shadow: 0 8px 28px rgba(0,0,0,.45); max-width: 260px; backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px); }
+#tip .t { font-weight: 600; }
+#tip .d { font-size: 12px; color: var(--ink-2); font-variant-numeric: tabular-nums; }
+
+/* The glass keeps its border and highlight in both palettes. */
+html[data-theme="light"] .top { background: rgba(255,255,255,.40); }
+html[data-theme="light"] section::before {
+  border-color: rgba(255,255,255,.72);
+  background: linear-gradient(135deg, rgba(255,255,255,.46), rgba(255,255,255,.08) 45%, rgba(255,255,255,.28)), rgba(255,255,255,.18);
+  box-shadow: inset 0 1.5px 1px rgba(255,255,255,.95), inset 0 -1px 1px rgba(255,255,255,.45), 0 20px 60px rgba(40,60,90,.09), 0 0 0 1px rgba(100,125,160,.06);
+}
+html[data-theme="light"] #tip { background: rgba(255,255,255,.96); border: 1px solid var(--hair); box-shadow: 0 8px 28px rgba(25,35,50,.16); }
+html[data-theme="light"] .wipe-handle { background: var(--ink); color: var(--on-ink); box-shadow: 0 2px 10px rgba(25,35,50,.2); }
+@media (prefers-reduced-transparency: reduce) { html[data-theme="light"] section::before { background: #fff; } }
+
+/* Translucent surfaces need a softly varied backdrop to show their depth. */
+:root {
+  --card: rgba(255,255,255,.045); --card-2: rgba(255,255,255,.075);
+  --hover: rgba(255,255,255,.12); --selected: rgba(255,255,255,.17);
+  --muted: #9198a5; --glass-edge: rgba(255,255,255,.15);
+  --ambient-cool: rgba(63,121,205,.22); --ambient-warm: rgba(200,111,81,.14); --ambient-soft: rgba(113,110,190,.12);
+}
+:root[data-theme="light"] {
+  --card: rgba(255,255,255,.32); --card-2: rgba(255,255,255,.27);
+  --hover: rgba(255,255,255,.60); --selected: rgba(255,255,255,.75);
+  --muted: #5d697b; --glass-edge: rgba(255,255,255,.66);
+  --ambient-cool: rgba(103,160,230,.25); --ambient-warm: rgba(240,168,136,.22); --ambient-soft: rgba(158,153,220,.17);
+}
+body {
+  background-image: radial-gradient(ellipse at 8% 15%, var(--ambient-cool), transparent 52%), radial-gradient(ellipse at 96% 48%, var(--ambient-warm), transparent 52%), radial-gradient(ellipse at 42% 100%, var(--ambient-soft), transparent 58%);
+  background-attachment: fixed;
+}
+.top {
+  background: rgba(18,22,30,.42);
+  border-radius: 0 0 20px 20px;
+  box-shadow: inset 0 -1px 0 var(--glass-edge), 0 8px 24px rgba(0,0,0,.06);
+  -webkit-backdrop-filter: blur(28px) saturate(160%);
+  backdrop-filter: blur(28px) saturate(160%);
+}
+.seg .opts { border-radius: 999px; box-shadow: inset 0 1px 0 var(--glass-edge), 0 1px 3px rgba(0,0,0,.04); }
+.seg label { border-radius: 999px; }
+.seg input:checked + label { box-shadow: inset 0 1px 0 var(--glass-edge), 0 2px 6px rgba(0,0,0,.08); }
+.box, .now, .tcard, .vcard, .conclusion, .duel, .slist, .exlist, .hud {
+  box-shadow: inset 0 1px 0 var(--glass-edge), inset 0 0 0 1px rgba(var(--surface-rgb),.045), 0 8px 24px rgba(0,0,0,.035);
+  -webkit-backdrop-filter: blur(12px) saturate(125%);
+  backdrop-filter: blur(12px) saturate(125%);
+}
+.hud { background: var(--card); }
+.stat { background: transparent; }
+.stat + .stat { box-shadow: inset 0 1px 0 var(--hair); }
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  section::before { background: rgba(25,29,38,.94); }
+  html[data-theme="light"] section::before { background: rgba(249,251,255,.94); }
+}
+@media (prefers-reduced-transparency: reduce) {
+  :root { --card: #1d222c; --card-2: #29303b; }
+  :root[data-theme="light"] { --card: #fff; --card-2: #edf0f5; }
+  body { background-image: none; }
+  .top, section::before, .box, .now, .tcard, .vcard, .conclusion, .duel, .slist, .exlist, .hud { -webkit-backdrop-filter: none; backdrop-filter: none; }
+  .top, section::before { background: #191d26; }
+  html[data-theme="light"] .top, html[data-theme="light"] section::before { background: #f9fbff; }
+}
+
+/* Emphasis belongs to key evidence and its limits, not entire paragraphs. */
+.sub strong, .stephead p strong, .hint strong, .conclusion strong { color: var(--ink); font-weight: 700; }
+.reading-block { display: block; }
+.reading-block + .reading-block { margin-top: 1em; }
+@media (max-width: 600px) {
+  .sub { font-size: 17px; }
+  .grid4 > .conclusion p { font-size: 16px; }
+  .top .ctrls { gap: 8px 10px; }
+}
+
+/* Pair maps with the full height of their adjacent content, not a fixed aspect ratio. */
+.rp-controls { min-width: 0; }
+@media (min-width: 921px) {
+  .deck { align-items: stretch; }
+  .deck > .map { aspect-ratio: auto; min-height: 440px; align-self: stretch; }
+  .deck > .hud { align-content: stretch; grid-template-rows: auto repeat(4, minmax(0, 1fr)); }
+  .deck > .hud > .stat { align-content: center; }
+  .exgrid { align-items: stretch; }
+  .exgrid > #exMap { aspect-ratio: auto; min-height: 540px; align-self: stretch; }
+  .exgrid > .exlist { align-content: stretch; grid-template-rows: auto repeat(9, auto); }
+  .exgrid .exrow { align-content: center; }
+  .rp { grid-template-rows: clamp(440px, 38vw, 540px) auto; align-items: stretch; }
+  .rp > #rpMap { aspect-ratio: auto; min-height: 0; align-self: stretch; }
+  .rp-side { min-height: 0; grid-template-rows: auto minmax(0, 1fr); align-content: stretch; }
+  .rp-side .slist { min-height: 0; max-height: none; align-content: stretch; grid-auto-rows: minmax(min-content, 1fr); }
+  .rp-controls { grid-column: 1 / -1; }
+  .rp-controls #rpScrub { margin-top: 0; }
+}
+@media (max-width: 920px) {
+  .rp > #rpMap { grid-row: 1; }
+  .rp-controls { grid-row: 2; }
+  .rp-side { grid-row: 3; }
+  .rp-controls #rpScrub { margin-top: 0; }
+}
+</style>
+
+
+<div class="wrap">
+  <header class="top">
+    <div class="brand" data-i="brand"></div>
+    <div class="ctrls">
+      <div class="seg"><span data-i="period"></span><div class="opts">
+        <input type="radio" name="period" id="p1950" value="1950"><label for="p1950" data-i="p1950" data-it="t1950"></label>
+        <input type="radio" name="period" id="p1966" value="1966" checked><label for="p1966" data-i="p1966" data-it="t1966"></label>
+        <input type="radio" name="period" id="p1980" value="1980"><label for="p1980" data-i="p1980" data-it="t1980"></label>
+      </div></div>
+      <div class="seg"><span data-i="intensity"></span><div class="opts">
+        <input type="radio" name="cat" id="c0" value="0" checked><label for="c0" data-i="c0"></label>
+        <input type="radio" name="cat" id="c1" value="1"><label for="c1" data-i="c1"></label>
+        <input type="radio" name="cat" id="c3" value="3"><label for="c3" data-i="c3"></label>
+      </div></div>
+      <div class="seg" role="group" data-ia="theme"><div class="opts">
+        <input type="radio" name="theme" id="tDark" value="dark" checked><label for="tDark" data-i="themeDark"></label>
+        <input type="radio" name="theme" id="tLight" value="light"><label for="tLight" data-i="themeLight"></label>
+      </div></div>
+      <div class="seg" role="group" aria-label="Language / 语言"><div class="opts">
+        <input type="radio" name="lang" id="lEN" value="en" checked><label for="lEN">EN</label>
+        <input type="radio" name="lang" id="lZH" value="zh"><label for="lZH">中文</label>
+      </div></div>
+    </div>
+  </header>
+
+  <section class="hero" data-ia="heroAria">
+    <div class="hero-top">
+      <div>
+        <div class="kicker"><span data-i="kicker"></span><span id="kcount"></span></div>
+        <h1 data-i="h1"></h1>
+        <p class="sub" data-i="heroSub"></p>
+      </div>
+      <button class="now" id="nowBtn" type="button">
+        <span class="l1"><i></i><span data-i="nowL1"></span></span>
+        <span class="l2">ONI +2.16 °C</span>
+        <span class="l3" data-i="nowL3"></span>
+      </button>
+    </div>
+
+    <div class="deck">
+      <div class="map" id="heroMap"><canvas></canvas><canvas></canvas><canvas></canvas><canvas class="hit"></canvas>
+        <span class="tag tl" id="heroTag"></span><span class="tag bl" id="heroXY"></span></div>
+      <aside class="hud" id="hud"></aside>
+    </div>
+
+    <div class="dial">
+      <div class="chips" id="chips"><span data-i="quick"></span></div>
+      <div class="selline" id="selLine" aria-live="polite"></div>
+      <svg id="swarm" role="img" data-ia="swarmAria"></svg>
+      <div class="hint" data-i="swarmHint"></div>
+    </div>
+  </section>
+
+  <section id="s-cal">
+    <div class="sec-head"><span class="idx" data-i="calIdx"></span><h2 data-i="calH2"></h2><p class="sub" data-i="calSub"></p></div>
+    <div class="calcount" id="calCount"></div>
+    <svg id="cal" role="img" data-ia="calAria"></svg>
+    <div class="legend-row" id="calLeg"></div>
+  </section>
+
+  <section id="s-duel">
+    <div class="sec-head"><span class="idx" data-i="duelIdx"></span><h2 data-i="duelH2"></h2>
+      <p class="sub" id="duelSub"></p></div>
+    <div class="duel" id="duel"></div>
+  </section>
+
+  <section id="s-wipe">
+    <div class="sec-head"><span class="idx" data-i="wipeIdx"></span><h2 data-i="wipeH2"></h2>
+      <p class="sub" data-i="wipeSub"></p></div>
+    <div class="chips" style="margin-bottom:12px"><span data-i="mode"></span>
+      <button class="chip on" type="button" id="mWipe" data-i="mWipe"></button><button class="chip" type="button" id="mDiff" data-i="mDiff"></button></div>
+    <div class="map" id="wipeMap"><canvas></canvas><canvas></canvas><canvas class="hit"></canvas>
+      <span class="wlab k-nino" id="wl" style="left:20px" data-i="wl"></span><span class="wlab k-nina" id="wr" style="right:20px" data-i="wr"></span>
+      <button class="wipe-handle" id="wh" type="button" data-ia="whAria">⟷</button>
+      <span class="tag bl" id="wipeXY"></span></div>
+    <div class="legend-row" id="wipeLegend"></div>
+  </section>
+
+  <section id="s-cat">
+    <div class="sec-head"><span class="idx" data-i="catIdx"></span><h2 data-i="catH2"></h2><p class="sub" data-i="catSub"></p></div>
+    <div class="box"><svg id="catScale" role="img" data-ia="catAria"></svg></div>
+  </section>
+
+  <section id="s-replay">
+    <div class="sec-head"><span class="idx" data-i="rpIdx"></span><h2 data-i="rpH2"></h2>
+      <p class="sub" data-i="rpSub"></p></div>
+    <div class="rp-bar">
+      <div class="yearbox"><button class="ib" id="yPrev" type="button" data-ia="prevAria">‹</button><span class="yr" id="yr">2020</span><button class="ib" id="yNext" type="button" data-ia="nextAria">›</button></div>
+      <span class="badge" id="yBadge"></span>
+      <button class="play" id="play" type="button"><span id="playIcon">▶</span><span id="playTxt"></span></button>
+      <div class="seg"><span data-i="speed"></span><div class="opts">
+        <input type="radio" name="spd" id="s1" value="1"><label for="s1">1×</label>
+        <input type="radio" name="spd" id="s3" value="3" checked><label for="s3">3×</label>
+        <input type="radio" name="spd" id="s8" value="8"><label for="s8">8×</label>
+      </div></div>
+      <span class="clock" id="clock"></span>
+    </div>
+    <div class="chips" id="rpChips" style="margin-bottom:12px"><span data-i="classics"></span></div>
+    <div class="rp">
+      <div class="map" id="rpMap"><canvas></canvas><canvas></canvas><canvas class="hit"></canvas><span class="tag bl" id="rpXY"></span></div>
+      <div class="rp-side">
+        <div class="hud" style="grid-template-columns:1fr 1fr" id="rpHud"></div>
+        <div class="slist" id="slist"></div>
+      </div>
+      <div class="rp-controls">
+        <input type="range" id="rpScrub" min="0" max="1000" value="1000" data-ia="scrubAria">
+        <div class="catlegend" id="catLegend"></div>
+      </div>
+    </div>
+  </section>
+
+  <section id="s-types">
+    <div class="sec-head"><span class="idx" data-i="typesIdx"></span><h2 data-i="typesH2"></h2>
+      <p class="sub" id="typesSub" data-i="typesSub"></p></div>
+    <div class="types" id="types"></div>
+  </section>
+
+  <section id="s-fp">
+    <div class="sec-head"><span class="idx" data-i="fpIdx"></span><h2 data-i="fpH2"></h2>
+      <p class="sub" data-i="fpSub"></p></div>
+    <div class="verdicts" id="verdicts"></div>
+
+    <div class="step">
+      <div class="stephead"><span class="stepn">1</span><div><h3 data-i="s1H"></h3><p data-i="s1P"></p></div></div>
+      <div class="chips" id="exChips"></div>
+      <div class="exgrid">
+        <div class="map" id="exMap"><canvas></canvas><canvas></canvas></div>
+        <div class="exlist" id="exList"></div>
+      </div>
+    </div>
+
+    <div class="step">
+      <div class="stephead"><span class="stepn">2</span><div><h3 data-i="s2H"></h3><p data-i="s2P"></p></div></div>
+      <div class="map" id="cenMap"><canvas></canvas><canvas></canvas><canvas class="hit"></canvas><span class="tag bl" id="cenXY"></span></div>
+      <div class="legend-row" id="cenLegend"></div>
+    </div>
+
+    <div class="step">
+      <div class="stephead"><span class="stepn">3</span><div><h3 data-i="s3H"></h3><p id="s3P"></p></div></div>
+      <div class="fp">
+        <div class="box"><h3 data-i="ridgeH"></h3><svg id="ridges" role="img" data-ia="ridgeAria"></svg><div class="legend-row" id="ridgeLeg"></div></div>
+        <div class="box">
+          <h3 data-i="coinH3"></h3>
+          <div class="coinbig"><b id="coinBest">0.63</b><span data-i="coinSpan"></span></div>
+          <svg id="coin" role="img" data-ia="coinAria"></svg><div class="legend-row" id="coinLeg"></div>
+          <p class="hint" style="padding:0" data-i="coinNote"></p>
+        </div>
+      </div>
+    </div>
+
+    <div class="step">
+      <div class="stephead"><span class="stepn">4</span><div><h3 data-i="s4H"></h3><p data-i="s4P"></p></div></div>
+      <div class="grid4">
+        <div class="map" id="typeShiftMap"><canvas></canvas><canvas></canvas></div>
+        <div class="box"><h3 data-i="decH"></h3><svg id="decSvg" role="img" data-ia="decAria"></svg>
+          <h3 style="margin-top:18px" data-i="robH"></h3><div class="mtable" id="robTable"></div><p class="hint" style="margin:0" data-i="decNote"></p></div>
+        <div class="conclusion"><span class="idx" data-i="conclIdx"></span><h3 data-i="conclH"></h3><p id="conclP"></p></div>
+      </div>
+    </div>
+
+    <details class="minor">
+      <summary data-i="allMomSum"></summary>
+      <div class="mtable" id="momTable"></div>
+    </details>
+  </section>
+
+  <details class="method">
+    <summary data-i="methodSum"></summary>
+    <div class="mgrid">
+      <div><h4 data-i="mData"></h4><ul data-i="mDataList"></ul></div>
+      <div><h4 data-i="mMethods"></h4><ul data-i="mMethodsList"></ul></div>
+      <div><h4 data-i="mLimits"></h4><ul data-i="mLimitsList"></ul></div>
+    </div>
+  </details>
+  <footer><span id="src"></span><span data-i="credit"></span></footer>
+</div>
+<div id="tip" hidden></div>
+
+<script type="application/json" id="data">__DATA__</script>
+<script type="application/json" id="land">__LAND__</script>
+<script type="application/json" id="ml">__ML__</script>
+<script type="application/json" id="dec">__DEC__</script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.9.0/d3.min.js"></script>
+<script>
+(function () {
+'use strict';
+const D = JSON.parse(document.getElementById('data').textContent);
+const landGeo = JSON.parse(document.getElementById('land').textContent);
+const ML = JSON.parse(document.getElementById('ml').textContent);
+const DEC = JSON.parse(document.getElementById('dec').textContent);
+const PH = ['nino', 'neutral', 'nina'];
+const PHN = {}, PHY = {};
+const CATS = ['TS', 'C1', 'C2', 'C3', 'C4', 'C5'];
+const CATN = [];
+const TYPES = [{}, {}, {}, {}];
+const BBOX = [[-102, 5], [-5, 55]];
+const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
+const yearInfo = Object.fromEntries(D.years.map(d => [d.y, d]));
+const fmt0 = d3.format('.0f'), fmt1 = d3.format('.1f'), fmt2 = d3.format('.2f');
+const I18N = {
+  en: {
+    docTitle: 'ENSO Storm Atlas', theme: 'Color theme', themeDark: 'Dark', themeLight: 'Light',
+    p1950: '1950 · All records', p1966: '1966 · Satellite era', p1980: '1980 · Modern era',
+    t1950: 'Every season since ONI records begin (1950). Before satellites, some short-lived storms far out at sea were missed.',
+    t1966: 'Starts when weather satellites began routinely watching the Atlantic. Recommended default.',
+    t1980: 'Geostationary imagery and standardized intensity estimates: the most reliable data, but fewer seasons.',
+    selNone: 'Each dot is one hurricane season. Drag across the ruler or pick a preset to select seasons.',
+    selEmpty: 'No seasons in this range.',
+    selList: (n, ys) => `<b>${n} season${n > 1 ? 's' : ''} selected:</b> ${ys}`,
+    selMany: (n, o) => `<b>${n} seasons selected</b> · mean ONI ${o}`,
+    brand: 'ENSO Storm Atlas', period: 'Period', intensity: 'Intensity', c0: 'All storms', c1: 'Hurricanes', c3: 'Major',
+    heroAria: 'ONI dial', kicker: 'North Atlantic hurricanes × ENSO · ',
+    h1: 'The Pacific <span class="hot">warms</span>.<br>The Atlantic <span class="cold">quiets</span>.',
+    heroSub: 'Each dot on the ruler below is <strong>one hurricane season</strong>, placed by that year’s <strong>August–October sea-surface temperature anomaly</strong> in the equatorial Pacific (ONI). <strong>Drag across the ruler</strong> and the map replays every storm from those seasons.',
+    nowL1: 'Happening now · Jul–Sep 2026', nowL3: 'A strong El Niño. See past seasons this strong ›',
+    quick: 'Quick picks', swarmAria: 'ONI of each season; drag to select a range',
+    swarmHint: 'Filled dots are selected, hollow dots are not, and faint dashed dots fall outside the current period. Click any dot to replay that season below.',
+    duelIdx: 'Head to head', duelH2: '<span class="k-nina">La Niña</span> vs <span class="k-nino">El Niño</span>',
+    wipeIdx: 'Hot zones', wipeH2: 'Where the storms go',
+    wipeSub: 'Brighter means <strong>more storms pass through each year</strong>. Drag the handle to compare the two kinds of season, or switch to <strong>Difference</strong> to see where each one has more.',
+    mode: 'View', mWipe: 'Slider', mDiff: 'Difference', wl: 'El Niño years', wr: 'La Niña years', whAria: 'Comparison divider; use the arrow keys to move it',
+    rpIdx: 'Season replay', rpH2: 'A hurricane season, fast-forwarded',
+    rpSub: 'Each storm appears the moment it is named; color and size show its <strong>strength at that moment</strong>. <strong>Accumulated ACE</strong> ticks up as the season unfolds. Try a La Niña year, then an El Niño year.',
+    prevAria: 'Previous year', nextAria: 'Next year', speed: 'Speed', classics: 'Notable seasons', scrubAria: 'Timeline',
+    play: 'Play', pause: 'Pause', replay: 'Replay',
+    typesIdx: 'Four track types', typesH2: 'Which storms does El Niño take away?',
+    typesSub: 'Every track is resampled to <strong>16 points</strong> and sorted by <strong>a single K-Means model</strong> into four types. The bars compare how many of each type appear <strong>per year</strong>.',
+    calIdx: 'ENSO calendar', calH2: 'Which seasons were El Niño, and which La Niña?',
+    calSub: '<strong>One square per hurricane season</strong>, coloured by its <strong>August–October ONI</strong>.',
+    calAria: 'Calendar of hurricane seasons 1950–2026 coloured by ENSO phase',
+    calLive: s => `${s} 2026`, calLiveNote: 'Season still under way; not used in the statistics.',
+    calCountL: p => `${p} seasons`, calTotal: y => `seasons since ${y}`,
+    calLegStrength: 'Darker = stronger anomaly', calLegLive: '* 2026: in progress',
+    catIdx: 'Saffir–Simpson scale', catH2: 'How strong is strong?',
+    catSub: 'Category is set by the <strong>peak 1-minute sustained wind</strong>.',
+    catAria: 'Saffir–Simpson wind scale with the number of storms reaching each category',
+    catMajor: 'Major hurricane', tdName: 'Tropical depression',
+    catDamage: ['Not yet a named storm', 'Named storm', 'Some damage', 'Extensive damage', 'Devastating damage', 'Catastrophic damage', 'Catastrophic damage'],
+    catCount: (n, y) => `${n} storms peaked here since ${y}`, catBars: y => `Storms by peak strength, ${y}–2025`,
+    s4H: 'Inside each track type: what moves, and why',
+    s4P: 'Compute the centroid for each of the four track types separately. The overall shift then splits in two: <strong>storms changing type</strong> (fewer Gulf and Caribbean tracks) and <strong>storms of the same type running somewhere else</strong>.',
+    decH: 'Where the centroid shift comes from', decAria: 'Decomposition of the centroid shift into type mix and within-type parts',
+    decLon: (v, d) => `East–west: ${v}° ${d}`, decLat: (v, d) => `North–south: ${v}° ${d}`,
+    decMix: 'Type mix', decWithin: 'Within type', dNorth: v => `${v >= 0 ? '+' : ''}${v}° N`,
+    robH: 'Does it depend on the number of types?', robK: 'Types', robEast: 'East shift · type mix', robNorth: 'North shift · within type', robDetr: 'K = 4, trend removed',
+    decNote: '<strong>Bars follow the filters above</strong>; faded bars are not significant. For 1966–2025 and all named storms, bars use the same 1,000-shuffle results as the table; other filters use 400 whole-season label shuffles. <strong>The table is fixed</strong> (1966–2025, all named storms): types re-clustered for each K, p-values from 1,000 shuffles of season labels between years.',
+    conclIdx: 'Conclusion', conclH: 'El Niño thins out the deep-tropical tracks and nudges the rest north',
+    concl: (lon, lat, mix, within, n, auc) => `<span class="reading-block">Rebuilt on complete tracks (1966–2025, all named storms), the moment method gives a clear picture. In El Niño seasons the cloud of storm centroids sits <strong>${lon}° further east and ${lat}° further north</strong>. The eastward shift is almost entirely a change in which tracks occur: changes in the shares of <strong>all four track types together account for ${mix}°</strong> of it, including a lower share of Gulf and Caribbean tracks. Type mix remains the main component for every number of track types tested. </span><span class="reading-block">The northward shift happens inside the track types: the same kinds of tracks run <strong>about ${within}° further north</strong>, which holds for four or more types and after removing the long-term trend, <strong>but not with three</strong>. </span><span class="reading-block">Skewness and kurtosis carry a little information on their own, yet their <strong>gain on top of the centroid and spread is not established</strong> with ${n} seasons, and a single track carries only a <strong>weak ENSO signal (AUC ${auc})</strong>. The original project's question was a good one; on corrected data its answer is about where storms form and travel, not about a distinct El Niño track shape.</span>`,
+    fpIdx: 'Method check',
+    fpH2: 'Track moments, retested: the centroid shift holds; any gain from higher orders is unproven',
+    fpSub: 'The original project follows Nakamura, Lall, Kushnir and Camargo (2009, <i>Journal of Climate</i>), who summarized each North Atlantic track by its “mass moments” (centroid, variance and covariance) and grouped the tracks. Here the method is rebuilt on <strong>complete tracks</strong>, its ENSO signal is retested, and the project’s own extension to <strong>skewness and kurtosis</strong> is put to the test.',
+    vCen: 'Centroid shift in El Niño years', vCenSub: (d, dir, px, py) => `and ${d}° further ${dir} · east–west ${px}, north–south ${py}`,
+    vTilt: 'Northeast tilt (covariance)', vTiltSub: (a, b, p) => `El Niño ${a} vs La Niña ${b} deg² · ${p}`,
+    vHigh: 'Skewness & kurtosis on top of the centroid and spread', vHighSub: (a, b, lo, hi) => `AUC ${a} → ${b}; season-bootstrap 95% interval for the gain: ${lo} to ${hi}`,
+    stLit: 'Consistent with the literature', stNs: 'Not significant in this selection', stNone: 'Small gain', stOpen: 'Gain not established',
+    east: 'east', west: 'west', north: 'north', south: 'south',
+    s1H: 'What a moment measures',
+    s1P: 'Treat every 6-hourly position as one unit of mass. The <strong>first moment</strong> is the centre of that mass; the <strong>second</strong> is its spread and tilt (the ellipse); the <strong>third and fourth</strong> describe the shape of its distribution along each axis (the curves on the edges).',
+    exPick: 'Example storm', lonDist: 'Longitude distribution', latDist: 'Latitude distribution',
+    exCentroid: 'Centroid (1st moment)', exEllipse: '1σ ellipse (2nd moment)', fixes: '6-hourly fixes',
+    ord: ['1st', '2nd', '3rd', '4th'],
+    exInterp: (j, v) => [
+      'Mean longitude of all fixes', 'Mean latitude of all fixes',
+      'How far the track spreads east to west (deg²)', 'How far the track spreads north to south (deg²)',
+      v > 5 ? 'Positive: the track tilts from southwest to northeast' : v < -5 ? 'Negative: the track tilts from northwest to southeast' : 'Near zero: no clear tilt',
+      v > .3 ? 'Most fixes lie to the west, with a tail stretching east' : v < -.3 ? 'Most fixes lie to the east, with a tail stretching west' : 'Roughly symmetric east to west',
+      v > .3 ? 'Most fixes lie at lower latitudes, with a tail stretching north' : v < -.3 ? 'Most fixes lie at higher latitudes, with a tail stretching south' : 'Roughly symmetric north to south',
+      v > 0 ? 'Fixes bunch up in one longitude band' : 'Fixes spread fairly evenly east to west',
+      v > 0 ? 'Fixes bunch up in one latitude band' : 'Fixes spread fairly evenly north to south'][j],
+    s2H: 'First and second order: the centroid shift holds up',
+    s2P: 'Each dot is one storm’s centroid; each ellipse is a group’s typical spread and tilt (its average covariance). In El Niño years the whole cloud <strong>moves east and north</strong>, so fewer storms reach the Caribbean and the Gulf. The ellipse also leans more to the northeast, but that second-order difference is weaker and <strong>not always significant</strong>.',
+    cenArrow: (dx, xd, dy, yd) => `${dx}° ${xd}, ${dy}° ${yd}`,
+    cenLegDots: 'Storm centroids (El Niño / La Niña years)', cenLegEll: 'Typical 1σ shape', cenLegArrow: 'Arrow: La Niña mean → El Niño mean', centroidAt: 'Centroid',
+    s3H: 'Third and fourth order: maybe a little extra, not yet established',
+    s3P: (h, hn, a, b, n, lo, hi) => `The original project added skewness and kurtosis. Their distributions overlap heavily between El Niño and La Niña storms, but they are not empty: on their own they reach an <strong>AUC of ${h}</strong> (shuffled seasons average ${hn}). Added to the centroid and spread they lift <strong>AUC from ${a} to ${b}</strong>, yet with only ${n} labelled seasons that gain sits within season-to-season noise (<strong>bootstrap 95% interval ${lo} to ${hi}</strong>). Whether they add anything beyond the lower moments is <strong>still an open question</strong>.`,
+    ridgeH: 'Distribution of each higher moment', ridgeAria: 'Density curves of skewness and kurtosis for El Niño and La Niña storms',
+    overlap: o => `${o}% overlap`, meanDiff: p => `mean difference ${p}`, ridgeFoot: 'Dashed lines: group means. Overlap: the shared area of the two normalised distributions.',
+    allMomSum: 'All nine moments, by group', thOrder: 'Order', thMoment: 'Moment',
+    radarAria: 'Radar chart of nine track moments', findsH3: 'Where El Niño years differ from La Niña years',
+    coinH3: 'From one track alone, can you tell the season type?', coinSpan: 'Best score (AUC). Grey bars show what shuffled seasons score.', coinAria: 'Classification AUC by feature set, with each set’s shuffled-season range',
+    coinNote: 'El Niño vs La Niña storms, 1966–2025 (<strong>29 seasons, 391 storms</strong>). Logistic regression with balanced class weights, averaged over 10 random 10-fold splits that keep whole seasons together. Grey bar: 5–95% range of the same statistic after shuffling season labels between years (100 shuffles, same splits); tick: its mean. Answer: a little. One track carries a weak ENSO signal, <strong>far too weak to classify a single storm reliably</strong>. Repeated splits reuse the same 29 seasons, so they smooth fold noise rather than add independent evidence. Fixed result; it <strong>does not change with the filters above</strong>.',
+    methodSum: 'Data, methods & limitations', mData: 'Data', mMethods: 'Methods', mLimits: 'Limitations',
+    mDataList: '<li>Tracks: IBTrACS v04r01 North Atlantic, <code>main</code> tracks, 00/06/12/18 UTC fixes; wind is <code>USA_WIND</code> (1-minute sustained, kt).</li><li>Included: at least one tropical or subtropical fix ≥ 34 kt; 979 storms from 1950–2025. The 2026 season is still under way and is excluded.</li><li>ENSO: NOAA CPC ONI (ERSSTv5), classified by each year’s ASO season; ≥ +0.5 is El Niño, ≤ −0.5 is La Niña.</li><li>Coastlines: Natural Earth 1:50m.</li>',
+    mMethodsList: '<li>ACE = sum of squared wind speeds at tropical-stage fixes ≥ 34 kt ÷ 10⁴.</li><li>US landfall: a fix with <code>LANDFALL = 0</code> and ≥ 34 kt inside the contiguous US polygon.</li><li>Significance: permutation tests by season (4,000 shuffles, fixed seed), so storms from the same year are never treated as independent. p-values are Monte Carlo estimates and can differ in the last digit from the Python scripts.</li><li>Track types: arc-length resampling to 16 points, then one K-Means model with K = 4 (highest silhouette for K = 3–7: <span class="mono" id="sil"></span>).</li><li>Moments: computed from the latitude and longitude of 6-hourly fixes; storms with fewer than 4 fixes are skipped.</li>',
+    mLimitsList: '<li>Each ENSO phase includes relatively few seasons, so one extreme season can move an average.</li><li>Before satellites (pre-1966), short-lived storms far out at sea were missed, so the default period starts in 1966.</li><li>The AMO and the long-term Atlantic warming trend also affect activity and are not controlled for here. 2023 is the counterexample: an El Niño year that was still busy.</li><li>Everything shown is correlation. The mechanism (El Niño strengthens wind shear over the Caribbean) comes from the literature and is not tested here.</li>',
+    phaseSampleSize: (y0, y1, nina, nino) => `${y0}–${y1}: ${nina} La Niña seasons and ${nino} El Niño seasons. With these small samples, one extreme season can move an average.`,
+    credit: 'Redesigned from sarika-debruyn/hurricane-prediction-ml.',
+    src: (a, b) => `Data: ${a}; ${b}. Coastlines: Natural Earth 1:50m.`,
+    phn: { nino: 'El Niño', neutral: 'Neutral', nina: 'La Niña' },
+    phy: { nino: 'El Niño years', neutral: 'Neutral years', nina: 'La Niña years' },
+    catn: ['Tropical storm', 'Category 1', 'Category 2', 'Category 3', 'Category 4', 'Category 5'],
+    types: [
+      { name: 'Gulf & Caribbean', tl: 'Forms in the western Caribbean or the Gulf of Mexico and heads north toward the US Gulf Coast.' },
+      { name: 'East Coast recurver', tl: 'Forms near the Bahamas, runs up the US East Coast, then turns northeast.' },
+      { name: 'Mid-Atlantic recurver', tl: 'Forms over the subtropical central Atlantic and soon turns northeast; most never make landfall.' },
+      { name: 'Cape Verde type', tl: 'Forms west of Cape Verde and travels far west into the Caribbean, or fades on the way.' },
+    ],
+    unnamed: 'Unnamed', usLandfall: ' · US landfall',
+    heroTag: (a, b) => `${a} seasons · ${b} storms`,
+    what: c => c === 0 ? 'Storms' : c === 1 ? 'Hurricanes' : 'Major hurricanes',
+    perYr: w => `${w} / yr`, aceYr: 'ACE / yr', usYr: 'US landfalls / yr', gulfShare: 'Gulf & Caribbean share',
+    selection: 'Selection', allSeasons: 'All seasons', selInfo: (n, o) => `${n} seasons · mean ONI ${o}`,
+    avg: y => `${y}–2025 average`, vsAvg: 'vs average',
+    presets: ['All', 'Strong La Niña ≤ −1.0', 'La Niña ≤ −0.5', 'Neutral', 'El Niño ≥ +0.5', 'Strong El Niño ≥ +1.0', 'Like 2026 ≥ +1.5'],
+    swL: '← La Niña', swR: 'El Niño →', swStorms: (n, a) => `${n} storms · ACE ${a}`, outside: 'Outside the current period', clickReplay: 'Click to replay this season',
+    duelSub: (y, b, a) => `${y}–2025: ${b} La Niña seasons and ${a} El Niño seasons. The middle column shows the ratio and its significance (permutation test by season).`,
+    duelHead: '<span class="k-nina">◀ La Niña years</span><span class="k-nino">El Niño years ▶</span>',
+    gulfYr: 'Gulf-type storms / yr', sig: 'significant', nsig: 'not significant',
+    centroid: p => `${p} centroid`,
+    wipeLeg: m => `Same scale; brightest ≈ ${m} storms per year`,
+    diffLeg: 'Orange: more in El Niño years · Blue: more in La Niña years', diffSat: l => `Color saturates at ±${l} storms per year`,
+    wipeRead: (a, b) => `El Niño ${a} / La Niña ${b} per year`,
+    rpChip: (y, p, o, n) => `${y} · ${p} ${o} · ${n} storms`, noRecord: 'No storms recorded this year.',
+    rpHud: ['Named', 'Hurricanes', 'ACE so far', 'Active now'],
+    ratioNote: 'La Niña ÷ El Niño (per year)',
+    mom: [
+      { s: 'Centroid lon', find: d => `El Niño tracks sit <b>${fmt1(Math.abs(d))}°</b> further ${d > 0 ? 'east' : 'west'}: fewer storms reach deep into the Caribbean and the Gulf.` },
+      { s: 'Centroid lat', find: d => `Track centroids sit <b>${fmt1(Math.abs(d))}°</b> further ${d > 0 ? 'north' : 'south'}, closer to the subtropics.` },
+      { s: 'Lon variance', find: d => `Tracks spread ${d > 0 ? 'wider' : 'narrower'} east to west (variance differs by <b>${fmt0(Math.abs(d))}</b> deg²), with more ocean-crossing recurvers.` },
+      { s: 'Lat variance', find: d => `The north–south spread is ${d > 0 ? 'larger' : 'smaller'} (by <b>${fmt0(Math.abs(d))}</b> deg²).` },
+      { s: 'Covariance', find: d => `Covariance is ${d > 0 ? 'higher' : 'lower'} (by <b>${fmt0(Math.abs(d))}</b>): tracks tilt ${d > 0 ? 'more' : 'less'} toward the northeast.` },
+      { s: 'Lon skewness', find: d => `Longitude skewness differs by <b>${fmt2(d)}</b>.` },
+      { s: 'Lat skewness', find: d => `Latitude skewness is ${d < 0 ? 'lower' : 'higher'} (by <b>${fmt2(Math.abs(d))}</b>)${d < 0 ? ': more of the mass sits at low latitudes, with a longer northern tail' : ''}.` },
+      { s: 'Lon kurtosis', find: d => `Longitude kurtosis differs by <b>${fmt2(d)}</b>.` },
+      { s: 'Lat kurtosis', find: d => `Latitude kurtosis is ${d < 0 ? 'lower' : 'higher'} (by <b>${fmt2(Math.abs(d))}</b>): the north–south distribution has a different shape.` },
+    ],
+    overallMean: 'Overall mean', sigTag: ' · significant', legNino: '— El Niño years', legNina: '— La Niña years', legNeu: 'Dashed: neutral years',
+    noFinds: 'Under the current filters, no moment differs significantly between the two groups.',
+    coinSets: ['Skewness & kurtosis only', 'Genesis point', '1st + 2nd moments', '1st moment (centroid)', 'Whole track', 'All 9 moments'],
+    coinFlip: 'No-information range', perfect: 'Perfect separation →', nullTip: (m, lo, hi) => `Shuffled seasons: mean ${m}, 5–95% ${lo}–${hi}`, coinLegBand: 'Shuffled-season range (5–95%) and mean', coinLegAbove: 'Above that range', coinLegIn: 'Inside it',
+    kcount: (y, n) => `${y}–2025 · ${n} storms`,
+  },
+  zh: {
+    docTitle: 'ENSO 风暴图谱', theme: '主题颜色', themeDark: '深色', themeLight: '浅色',
+    p1950: '1950 起 · 全部记录', p1966: '1966 起 · 卫星时代', p1980: '1980 起 · 现代观测',
+    t1950: 'ONI 有记录以来（1950 年起）的全部年份。卫星时代之前，远洋的短命风暴有漏记。',
+    t1966: '从气象卫星开始常规监测大西洋算起，推荐使用。',
+    t1980: '有了静止卫星和统一的强度估算方法，数据最可靠，但年份更少。',
+    selNone: '每个点是一个飓风季。在刻度尺上拖动，或点上面的快捷按钮来选择年份。',
+    selEmpty: '这个区间里没有年份。',
+    selList: (n, ys) => `<b>已选 ${n} 年：</b>${ys}`,
+    selMany: (n, o) => `<b>已选 ${n} 年</b> · 平均 ONI ${o}`,
+    brand: 'ENSO 风暴图谱', period: '时期', intensity: '强度', c0: '全部风暴', c1: '飓风', c3: '强飓风',
+    heroAria: 'ONI 拨盘', kicker: '北大西洋飓风 × ENSO · ',
+    h1: '太平洋<span class="hot">升温</span>，<br>大西洋<span class="cold">安静</span>。',
+    heroSub: '下面的刻度尺上<strong>每个点是一个飓风季</strong>，横轴是那年 <strong>8–10 月赤道太平洋的海温距平（ONI）</strong>。<strong>在尺子上拖出一段</strong>，地图会播放这些年份里的每一个风暴。',
+    nowL1: '正在发生 · 2026 年 7–9 月', nowL3: '强厄尔尼诺。看看历史上同等强度的年份 ›',
+    quick: '快速选择', swarmAria: '各年 ONI 分布，可拖动选择',
+    swarmHint: '实心点是选中的年份，空心点未选中，淡色虚线圈不在当前时期内。点任意一个点，可以在下方回放那一年。',
+    duelIdx: '正面对比', duelH2: '<span class="k-nina">拉尼娜年</span> vs <span class="k-nino">厄尔尼诺年</span>',
+    wipeIdx: '热区', wipeH2: '风暴都去了哪片海',
+    wipeSub: '颜色越亮，<strong>平均每年经过该处的风暴越多</strong>。拖动中间的圆钮，在两类年份之间来回对比；切到<strong>“差值”模式</strong>，可以直接看出哪里多、哪里少。',
+    mode: '模式', mWipe: '滑块对比', mDiff: '差值', wl: '厄尔尼诺年', wr: '拉尼娜年', whAria: '对比分界线，用左右方向键移动',
+    rpIdx: '逐季回放', rpH2: '把一个飓风季快进播放',
+    rpSub: '每个风暴从命名那一刻开始出现，颜色和大小代表<strong>当时的强度</strong>。右上角的 <strong>ACE 随时间累积</strong>。选一个拉尼娜年和一个厄尔尼诺年，对比着看。',
+    prevAria: '上一年', nextAria: '下一年', speed: '速度', classics: '经典年份', scrubAria: '时间轴',
+    play: '播放', pause: '暂停', replay: '重播',
+    typesIdx: '四种航线', typesH2: '厄尔尼诺“吃掉”了哪一类风暴',
+    typesSub: '把每条路径重采样成 <strong>16 个点</strong>，用<strong>同一个 K-Means 模型</strong>分成四类。下面比较三类年份<strong>平均每年</strong>各出现几个。',
+    calIdx: 'ENSO 年历', calH2: '哪些年是厄尔尼诺，哪些年是拉尼娜？',
+    calSub: '<strong>每个方块是一个飓风季</strong>，颜色按当年 <strong>8–10 月的 ONI</strong>。',
+    calAria: '1950–2026 年各飓风季的 ENSO 位相年历',
+    calLive: s => `2026 年 ${s}`, calLiveNote: '本季仍在进行，未计入统计。',
+    calCountL: p => `${p}年`, calTotal: y => `${y} 年以来的飓风季`,
+    calLegStrength: '颜色越深，距平越强', calLegLive: '* 2026：进行中',
+    catIdx: '萨菲尔-辛普森等级', catH2: '几级才算强？',
+    catSub: '等级由风暴的<strong>最大 1 分钟持续风速</strong>决定。',
+    catAria: '萨菲尔-辛普森风速等级与达到各等级的风暴数量',
+    catMajor: '强飓风', tdName: '热带低压',
+    catDamage: ['尚未达到命名强度', '命名风暴', '造成一定破坏', '造成大范围破坏', '毁灭性破坏', '灾难性破坏', '灾难性破坏'],
+    catCount: (n, y) => `${y} 年以来有 ${n} 个风暴的巅峰在这一级`, catBars: y => `按巅峰强度统计的风暴数，${y}–2025`,
+    s4H: '拆开四类路径：动的是什么，为什么',
+    s4P: '分别计算四类路径各自的质心，整体偏移就能拆成两部分：一是<strong>风暴换了类型</strong>（墨西哥湾—加勒比型变少），二是<strong>同一类路径本身走到了别处</strong>。',
+    decH: '质心偏移从哪来', decAria: '质心偏移拆分为类型构成与类内偏移',
+    decLon: (v, d) => `东西向：${d} ${v}°`, decLat: (v, d) => `南北向：${d} ${v}°`,
+    decMix: '类型构成', decWithin: '类内偏移', dNorth: v => `${v >= 0 ? '偏北' : '偏南'} ${Math.abs(v)}°`,
+    robH: '换聚类数，结论还在吗？', robK: '类型数', robEast: '东移 · 类型构成', robNorth: '北移 · 类内', robDetr: 'K = 4，扣除长期趋势',
+    decNote: '<strong>条形图随上方筛选变化</strong>，淡色表示不显著。1966 年起、全部风暴时，条形图与表格共用 1000 次置换的结果；其他筛选使用 400 次按整年打乱标签的置换。<strong>表格为固定结果</strong>（1966–2025 年，全部命名风暴）：每个 K 都重新聚类，p 值来自在年份之间打乱标签 1000 次。',
+    conclIdx: '结论', conclH: '厄尔尼诺削减深热带路径，并把其余风暴往北推',
+    concl: (lon, lat, mix, within, n, auc) => `<span class="reading-block">在完整路径上重建矩方法后（1966–2025 年，全部命名风暴），结论很清楚。厄尔尼诺年，风暴质心整体<strong>偏东 ${lon}°、偏北 ${lat}°</strong>。东移几乎全部来自路径类型的变化：<strong>四类路径的构成变化合计贡献了其中的 ${mix}°</strong>，其中墨西哥湾—加勒比型占比下降。类型构成是东移的主要部分，这一点在所有测试的聚类数下都成立。</span><span class="reading-block">北移则发生在各类路径内部：同一类路径整体<strong>偏北约 ${within}°</strong>，在分成 4 类及以上、以及扣除长期趋势后都成立，但<strong>分成 3 类时不显著</strong>。</span><span class="reading-block">偏度和峰度单独使用时带有一点信息，但只有 ${n} 个年份，它们在质心和铺开范围之上的<strong>增益尚未证实</strong>；单条路径携带的 ENSO <strong>信号也很弱（AUC ${auc}）</strong>。原项目提出的问题是好问题；在修正后的数据上，答案在于风暴在哪里生成、往哪里走，而不在于存在一种独特的“厄尔尼诺路径形状”。</span>`,
+    fpIdx: '方法检验',
+    fpH2: '重新检验矩方法：质心偏移站得住，高阶矩的增益尚未证实',
+    fpSub: '原项目的方法来自 Nakamura、Lall、Kushnir 与 Camargo（2009，<i>Journal of Climate</i>）：用路径的“质量矩”（质心、方差、协方差）概括每条北大西洋路径，再据此分类。这里在<strong>完整路径</strong>上重建这套方法，重新检验它的 ENSO 信号，并检验原项目额外加入的<strong>偏度和峰度是否有用</strong>。',
+    vCen: '厄尔尼诺年路径质心偏移', vCenSub: (d, dir, px, py) => `同时${dir} ${d}° · 东西向 ${px}，南北向 ${py}`,
+    vTilt: '东北向倾斜（协方差）', vTiltSub: (a, b, p) => `厄尔尼诺 ${a}，拉尼娜 ${b}（度²）· ${p}`,
+    vHigh: '在质心和铺开范围之上加入偏度与峰度', vHighSub: (a, b, lo, hi) => `AUC ${a} → ${b}；按年份 bootstrap 的增益 95% 区间：${lo} 至 ${hi}`,
+    stLit: '与文献一致', stNs: '当前筛选下不显著', stNone: '小幅增益', stOpen: '增益尚未证实',
+    east: '偏东', west: '偏西', north: '偏北', south: '偏南',
+    s1H: '矩到底在量什么',
+    s1P: '把每个 6 小时定位点当作一份“质量”。<strong>一阶矩</strong>是这团质量的中心；<strong>二阶矩</strong>是它铺开的范围和倾斜方向（椭圆）；<strong>三阶和四阶矩</strong>描述它在经度、纬度方向上的分布形状（边上的曲线）。',
+    exPick: '示例风暴', lonDist: '经度分布', latDist: '纬度分布',
+    exCentroid: '质心（一阶矩）', exEllipse: '1σ 椭圆（二阶矩）', fixes: '个定位点',
+    ord: ['一阶', '二阶', '三阶', '四阶'],
+    exInterp: (j, v) => [
+      '所有定位点的平均经度', '所有定位点的平均纬度',
+      '路径在东西方向铺开的范围（度²）', '路径在南北方向铺开的范围（度²）',
+      v > 5 ? '正值：路径从西南向东北倾斜' : v < -5 ? '负值：路径从西北向东南倾斜' : '接近零：没有明显倾斜',
+      v > .3 ? '多数定位点偏西，向东拖出一条尾巴' : v < -.3 ? '多数定位点偏东，向西拖出一条尾巴' : '东西方向大致对称',
+      v > .3 ? '多数定位点偏南（低纬），向北拖出一条尾巴' : v < -.3 ? '多数定位点偏北（高纬），向南拖出一条尾巴' : '南北方向大致对称',
+      v > 0 ? '定位点集中在某一经度带' : '定位点在东西方向分布较均匀',
+      v > 0 ? '定位点集中在某一纬度带' : '定位点在南北方向分布较均匀'][j],
+    s2H: '一阶、二阶矩：质心偏移站得住',
+    s2P: '每个点是一个风暴的质心；椭圆是两类年份典型的路径铺开范围和倾斜方向（平均协方差）。厄尔尼诺年<strong>整团质心向东北移动</strong>，深入加勒比和墨西哥湾的风暴变少。椭圆也更向东北倾斜，但这个二阶差异较弱，<strong>并不总是显著</strong>。',
+    cenArrow: (dx, xd, dy, yd) => `${xd} ${dx}°，${yd} ${dy}°`,
+    cenLegDots: '风暴质心（厄尔尼诺年 / 拉尼娜年）', cenLegEll: '典型 1σ 形状', cenLegArrow: '箭头：拉尼娜均值 → 厄尔尼诺均值', centroidAt: '质心',
+    s3H: '三阶、四阶矩：也许多一点信号，但尚未证实',
+    s3P: (h, hn, a, b, n, lo, hi) => `原项目额外加入了偏度和峰度。它们在两类年份之间的分布高度重叠，但并非毫无信息：单独使用时 <strong>AUC 为 ${h}</strong>（打乱年份标签后平均 ${hn}）。加在质心和铺开范围之上，<strong>AUC 从 ${a} 升到 ${b}</strong>；但只有 ${n} 个有标签的年份，这点增益落在年份间的随机波动之内（<strong>bootstrap 95% 区间 ${lo} 至 ${hi}</strong>）。它们能否在低阶矩之外提供额外信息，<strong>目前还没有定论</strong>。`,
+    ridgeH: '各高阶矩的分布', ridgeAria: '厄尔尼诺年与拉尼娜年风暴的偏度、峰度分布曲线',
+    overlap: o => `重叠 ${o}%`, meanDiff: p => `均值差 ${p}`, ridgeFoot: '虚线：组均值。重叠：两条归一化分布共同覆盖的面积。',
+    allMomSum: '全部 9 个矩的分组数值', thOrder: '阶', thMoment: '矩',
+    radarAria: '9 个矩的雷达图', findsH3: '厄尔尼诺年相对拉尼娜年，显著不同的地方',
+    coinH3: '只看一条路径，能猜出它来自哪类年份吗？', coinSpan: '最好成绩（AUC）。灰条是打乱年份标签后的得分范围。', coinAria: '各特征组合的分类 AUC 及各自的打乱标签范围',
+    coinNote: '厄尔尼诺年与拉尼娜年的风暴，1966–2025 年（<strong>29 个年份，391 个风暴</strong>）。逻辑回归（类别加权平衡），对 10 次按年份整体分折的随机 10 折交叉验证取平均。灰条：在年份之间打乱标签后，同一统计量的 5–95% 范围（100 次打乱，使用相同分折）；竖线是其均值。结论：能猜出一点。单条路径带有微弱的 ENSO 信号，但<strong>远不足以可靠地判断单个风暴</strong>。重复分折反复使用同一批 29 个年份，只是平滑分折带来的波动，不是独立证据。固定结果，<strong>不随上方筛选变化</strong>。',
+    methodSum: '数据、方法与局限', mData: '数据', mMethods: '方法', mLimits: '局限',
+    mDataList: '<li>路径：IBTrACS v04r01 北大西洋，<code>main</code> 路径，00/06/12/18 UTC 定时点，风速用 <code>USA_WIND</code>（1 分钟持续风，kt）。</li><li>纳入：至少一个热带或副热带定时点风速 ≥ 34 kt，1950–2025 年共 979 个风暴。2026 年仍在进行，不计入。</li><li>ENSO：NOAA CPC ONI（ERSSTv5），按每年 ASO 季划分，≥ +0.5 为厄尔尼诺，≤ −0.5 为拉尼娜。</li><li>海岸线：Natural Earth 1:50m。</li>',
+    mMethodsList: '<li>ACE = 热带阶段 ≥ 34 kt 的定时点风速平方和 ÷ 10⁴。</li><li>美国登陆：<code>LANDFALL = 0</code> 且 ≥ 34 kt 的点落在美国本土多边形内。</li><li>显著性：以年为单位的置换检验，4000 次，固定种子，没有把同一年的风暴当作独立样本。p 值是蒙特卡洛估计，末位可能与 Python 脚本略有差异。</li><li>路径类型：弧长重采样 16 点后做单一 K-Means，K = 4（K = 3–7 中轮廓系数最高，<span class="mono" id="sil"></span>）。</li><li>高阶矩：在 6 小时定时点的经纬度上计算；少于 4 个点的风暴不计入。</li>',
+    mLimitsList: '<li>各 ENSO 位相的样本年份较少，单个极端季节就能拉动均值。</li><li>1966 年前没有卫星，远洋短命风暴有漏记，所以默认从 1966 年开始统计。</li><li>AMO 和大西洋变暖趋势也会影响活跃度，这里没有控制。2023 年就是厄尔尼诺年风暴依然很多的反例。</li><li>页面展示的是相关性；“厄尔尼诺增强加勒比上空的风切变”这一机制来自文献，不是本页检验的结果。</li>',
+    phaseSampleSize: (y0, y1, nina, nino) => `${y0}–${y1} 年：拉尼娜 ${nina} 年、厄尔尼诺 ${nino} 年。样本年份较少，单个极端季节就能拉动均值。`,
+    credit: '由 sarika-debruyn/hurricane-prediction-ml 重新设计。',
+    src: (a, b) => `数据：${a}；${b}。海岸线 Natural Earth 1:50m。`,
+    phn: { nino: '厄尔尼诺', neutral: '中性', nina: '拉尼娜' },
+    phy: { nino: '厄尔尼诺年', neutral: '中性年', nina: '拉尼娜年' },
+    catn: ['热带风暴', '1 级飓风', '2 级飓风', '3 级飓风', '4 级飓风', '5 级飓风'],
+    types: [
+      { name: '墨西哥湾—加勒比型', tl: '在加勒比西部或墨西哥湾生成，北上冲向美国湾岸。' },
+      { name: '美东转向型', tl: '巴哈马附近生成，贴着美国东海岸北上后转向。' },
+      { name: '大西洋中部转向型', tl: '副热带大西洋中部生成，很快转向东北，多数不登陆。' },
+      { name: '主发展区西行型', tl: '在佛得角以西生成，长途西行进入加勒比，或在途中消散。' },
+    ],
+    unnamed: '未命名', usLandfall: ' · 登陆美国',
+    heroTag: (a, b) => `${a} 个飓风季 · ${b} 个风暴`,
+    what: c => c === 0 ? '风暴' : c === 1 ? '飓风' : '强飓风',
+    perYr: w => `${w} / 年`, aceYr: 'ACE / 年', usYr: '美国登陆 / 年', gulfShare: '墨西哥湾—加勒比型占比',
+    selection: '当前选择', allSeasons: '全部年份', selInfo: (n, o) => `${n} 个季节 · 平均 ONI ${o}`,
+    avg: y => `${y}–2025 平均`, vsAvg: '较平均',
+    presets: ['全部', '强拉尼娜 ≤ −1.0', '拉尼娜 ≤ −0.5', '中性', '厄尔尼诺 ≥ +0.5', '强厄尔尼诺 ≥ +1.0', '像 2026 一样 ≥ +1.5'],
+    swL: '← 拉尼娜', swR: '厄尔尼诺 →', swStorms: (n, a) => `${n} 个 · ACE ${a}`, outside: '不在当前时期内', clickReplay: '点击：逐季回放',
+    duelSub: (y, b, a) => `${y}–2025 年：拉尼娜年 ${b} 年，厄尔尼诺年 ${a} 年。中间是倍数和显著性（以年为单位的置换检验）。`,
+    duelHead: '<span class="k-nina">◀ 拉尼娜年</span><span class="k-nino">厄尔尼诺年 ▶</span>',
+    gulfYr: '湾区型风暴 / 年', sig: '显著', nsig: '不显著',
+    centroid: p => `${p}路径质心`,
+    wipeLeg: m => `同一色阶，最亮 ≈ 每年 ${m} 个风暴经过`,
+    diffLeg: '橙：厄尔尼诺年更多 · 蓝：拉尼娜年更多', diffSat: l => `色阶在 ±${l} 个/年处饱和`,
+    wipeRead: (a, b) => `厄 ${a} / 拉 ${b} 个/年`,
+    rpChip: (y, p, o, n) => `${y} · ${p} ${o} · ${n} 个`, noRecord: '这一年没有记录。',
+    rpHud: ['已命名', '飓风', 'ACE 累积', '正在活动'],
+    ratioNote: '拉尼娜年 ÷ 厄尔尼诺年（每年个数）',
+    mom: [
+      { s: '质心经度', find: d => `厄尔尼诺年的路径整体偏${d > 0 ? '东' : '西'} <b>${fmt1(Math.abs(d))}°</b>：风暴更少深入加勒比和墨西哥湾。` },
+      { s: '质心纬度', find: d => `路径质心偏${d > 0 ? '北' : '南'} <b>${fmt1(Math.abs(d))}°</b>，活动区更靠近副热带。` },
+      { s: '经度方差', find: d => `东西方向铺得${d > 0 ? '更开' : '更窄'}（方差差 <b>${fmt0(Math.abs(d))}</b> 度²），横跨大洋的转向路径更多。` },
+      { s: '纬度方差', find: d => `南北跨度${d > 0 ? '更大' : '更小'}（差 <b>${fmt0(Math.abs(d))}</b> 度²）。` },
+      { s: '协方差', find: d => `协方差${d > 0 ? '更大' : '更小'}（差 <b>${fmt0(Math.abs(d))}</b>），路径${d > 0 ? '更明显地朝东北方向倾斜' : '更少朝东北倾斜'}。` },
+      { s: '经度偏度', find: d => `经度偏度差 <b>${fmt2(d)}</b>。` },
+      { s: '纬度偏度', find: d => `纬度偏度${d < 0 ? '更低' : '更高'}（差 <b>${fmt2(d)}</b>）${d < 0 ? '：更多定位点集中在低纬，向北的尾巴更长' : ''}。` },
+      { s: '经度峰度', find: d => `经度峰度差 <b>${fmt2(d)}</b>。` },
+      { s: '纬度峰度', find: d => `纬度峰度${d < 0 ? '更低' : '更高'}（差 <b>${fmt2(d)}</b>），南北分布形状不同。` },
+    ],
+    overallMean: '全体均值', sigTag: ' · 显著', legNino: '— 厄尔尼诺年', legNina: '— 拉尼娜年', legNeu: '虚线：中性年',
+    noFinds: '当前筛选下，没有哪个矩在两类年份之间显著不同。',
+    coinSets: ['只用偏度和峰度', '生成位置', '一、二阶矩', '一阶矩（质心）', '整条路径', '全部 9 个矩'],
+    coinFlip: '无信息区间', perfect: '完全分开 →', nullTip: (m, lo, hi) => `打乱年份标签：均值 ${m}，5–95% ${lo}–${hi}`, coinLegBand: '打乱年份标签后的范围（5–95%）与均值', coinLegAbove: '高于该范围', coinLegIn: '落在范围内',
+    kcount: (y, n) => `${y}–2025 年 · ${n} 个风暴`,
+  },
+};
+let lang = 'en';
+try { const s = localStorage.getItem('enso-atlas-lang'); if (s === 'en' || s === 'zh') lang = s; } catch (e) {}
+const tx = (k, ...a) => { const v = I18N[lang][k]; return typeof v === 'function' ? v(...a) : v; };
+
+const lonTxt = x => `${fmt1(Math.abs(x))}°${x < 0 ? 'W' : 'E'}`, latTxt = y => `${fmt1(Math.abs(y))}°${y < 0 ? 'S' : 'N'}`;
+const catOf = w => w >= 137 ? 5 : w >= 113 ? 4 : w >= 96 ? 3 : w >= 83 ? 2 : w >= 64 ? 1 : 0;
+
+let C = {};
+function readColors() {
+  const g = getComputedStyle(document.documentElement), v = k => g.getPropertyValue(k).trim();
+  C = { ink: v('--ink'), ink2: v('--ink-2'), muted: v('--muted'), line: v('--line'), line2: v('--line-2'), bg: v('--bg'), panel: v('--panel'),
+    nino: v('--nino'), nina: v('--nina'), neutral: v('--neutral'), dot: v('--land-dot'), coast: v('--coast'), sea1: v('--sea-1'), sea2: v('--sea-2'),
+    land: v('--land'), halo: v('--halo'), grid: v('--grid'), tint: a => `rgba(${v('--surface-rgb')},${a})`,
+    cat: [0, 1, 2, 3, 4, 5].map(i => v('--c' + i)) };
+}
+readColors();
+
+// ---------- decode ----------
+D.storms.forEach(s => {
+  const n = s.tk.length / 3; s.lon = new Float32Array(n); s.lat = new Float32Array(n); s.wind = new Uint16Array(n); s.trop = new Uint8Array(n);
+  for (let i = 0; i < n; i++) { const v = s.tk[3 * i + 2]; s.lon[i] = s.tk[3 * i] / 10; s.lat[i] = s.tk[3 * i + 1] / 10; s.wind[i] = v % 1000; s.trop[i] = v >= 1000 ? 1 : 0; }
+  delete s.tk; s.p = yearInfo[s.y].p; s.mo = n >= 4 ? moments(s.lon, s.lat) : null;
+  s.t1 = s.t0 + 6 * (n - 1);
+});
+function moments(x, y) {
+  const n = x.length, mx = d3.mean(x), my = d3.mean(y);
+  let sxx = 0, syy = 0, sxy = 0, x3 = 0, y3 = 0, x4 = 0, y4 = 0;
+  for (let i = 0; i < n; i++) { const a = x[i] - mx, b = y[i] - my; sxx += a * a; syy += b * b; sxy += a * b; x3 += a ** 3; y3 += b ** 3; x4 += a ** 4; y4 += b ** 4; }
+  const m2x = sxx / n, m2y = syy / n;
+  const sk = (m3, m2) => m2 > 0 ? (m3 / n) / m2 ** 1.5 : NaN, ku = (m4, m2) => m2 > 0 ? (m4 / n) / m2 ** 2 - 3 : NaN;
+  const r = [mx, my, sxx / (n - 1), syy / (n - 1), sxy / (n - 1), sk(x3, m2x), sk(y3, m2y), ku(x4, m2x), ku(y4, m2y)];
+  return r.every(isFinite) ? r : null;
+}
+const byYear = d3.group(D.storms, s => s.y);
+
+// ---------- tooltip ----------
+const tip = document.getElementById('tip');
+function showTip(html, ev) {
+  tip.innerHTML = html; tip.hidden = false;
+  const r = tip.getBoundingClientRect(); let x = ev.clientX + 16, y = ev.clientY + 16;
+  if (x + r.width > innerWidth - 8) x = ev.clientX - r.width - 16;
+  if (y + r.height > innerHeight - 8) y = ev.clientY - r.height - 16;
+  tip.style.left = Math.max(8, x) + 'px'; tip.style.top = Math.max(8, y) + 'px';
+}
+const hideTip = () => { tip.hidden = true; };
+
+// ---------- stats ----------
+function rng(seed) { return () => { seed |= 0; seed = seed + 0x6D2B79F5 | 0; let t = Math.imul(seed ^ seed >>> 15, 1 | seed); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; }; }
+function permFn(f, A, B, N = 4000) {
+  const obs = f(B) - f(A); if (!isFinite(obs) || !A.length || !B.length) return NaN;
+  const r = rng(42), arr = A.concat(B); let hit = 0;
+  for (let k = 0; k < N; k++) {
+    for (let i = arr.length - 1; i > 0; i--) { const j = Math.floor(r() * (i + 1)); const t = arr[i]; arr[i] = arr[j]; arr[j] = t; }
+    if (Math.abs(f(arr.slice(A.length)) - f(arr.slice(0, A.length))) >= Math.abs(obs) - 1e-12) hit++;
+  }
+  return (hit + 1) / (N + 1);
+}
+const pTxt = p => !isFinite(p) ? '—' : p < 0.001 ? 'p < 0.001' : `p = ${p < 0.01 ? p.toFixed(3) : p.toFixed(2)}`;
+
+const state = { y0: 1966, cat: 0, sel: null, wipe: 0.5, mode: 'wipe' };
+let R;
+function compute() {
+  const yrs = D.years.filter(d => d.y >= state.y0);
+  const storms = D.storms.filter(s => s.y >= state.y0 && s.c >= state.cat);
+  const per = {}; yrs.forEach(d => per[d.y] = { n: 0, ace: 0, us: 0, k: [0, 0, 0, 0], mo: new Float64Array(9), mc: 0 });
+  storms.forEach(s => { const a = per[s.y]; a.n++; a.ace += s.ace; a.us += s.us; a.k[s.k]++; if (s.mo) { a.mc++; for (let j = 0; j < 9; j++) a.mo[j] += s.mo[j]; } });
+  const byPhase = Object.fromEntries(PH.map(p => [p, yrs.filter(d => d.p === p).map(d => d.y)]));
+  const mean = (key, ys) => ys.length ? d3.sum(ys, y => key(per[y])) / ys.length : NaN;
+  const momStat = (j, ys) => { let s = 0, n = 0; for (const y of ys) { s += per[y].mo[j]; n += per[y].mc; } return n ? s / n : NaN; };
+  return { yrs, storms, per, byPhase, mean, momStat };
+}
+
+// ---------- map engine ----------
+const maps = [];
+function makeMap(el) {
+  const cvs = [...el.querySelectorAll('canvas')];
+  const M = { el, cvs, ctx: cvs.map(c => c.getContext('2d')), w: 0, h: 0, proj: null, onResize: null };
+  M.resize = (force) => {
+    const w = el.clientWidth, h = el.clientHeight, dpr = Math.min(devicePixelRatio || 1, 2);
+    if (!force && w === M.w && h === M.h) return false;
+    M.w = w; M.h = h;
+    cvs.forEach((c, i) => { c.width = Math.round(w * dpr); c.height = Math.round(h * dpr); M.ctx[i].setTransform(dpr, 0, 0, dpr, 0, 0); });
+    M.proj = d3.geoEquirectangular().fitExtent([[0, 0], [w, h]], { type: 'MultiPoint', coordinates: BBOX }).clipExtent([[0, 0], [w, h]]);
+    drawBase(M); return true;
+  };
+  M.project = (s) => { const n = s.lon.length, xy = new Float32Array(2 * n); for (let i = 0; i < n; i++) { const p = M.proj([s.lon[i], s.lat[i]]); xy[2 * i] = p[0]; xy[2 * i + 1] = p[1]; } return xy; };
+  maps.push(M);
+  return M;
+}
+const dotCache = new Map();
+function drawBase(M) {
+  const ctx = M.ctx[0], { w, h, proj } = M;
+  const g = ctx.createRadialGradient(w * .55, h * .45, 0, w * .55, h * .45, Math.max(w, h) * .75);
+  g.addColorStop(0, C.sea1); g.addColorStop(1, C.sea2); ctx.fillStyle = g; ctx.fillRect(0, 0, w, h);
+  ctx.beginPath(); d3.geoPath(proj, ctx)(landGeo); ctx.fillStyle = C.land; ctx.fill();
+  if (false) {
+  const key = w + 'x' + h; let pts = dotCache.get(key);
+  if (!pts) {
+    const off = document.createElement('canvas'); off.width = w; off.height = h; const o = off.getContext('2d', { willReadFrequently: true });
+    o.fillStyle = '#fff'; o.beginPath(); d3.geoPath(proj, o)(landGeo); o.fill();
+    const img = o.getImageData(0, 0, w, h).data, step = Math.max(4, Math.round(w / 190)); pts = [];
+    for (let y = step / 2; y < h; y += step) for (let x = step / 2; x < w; x += step) { const i = (Math.floor(y) * w + Math.floor(x)) * 4 + 3; if (img[i] > 128) pts.push(x, y); }
+    pts.step = step; dotCache.set(key, pts);
+  }
+  ctx.fillStyle = C.dot; const r = Math.max(1, pts.step * .26);
+  ctx.beginPath(); for (let i = 0; i < pts.length; i += 2) { ctx.moveTo(pts[i] + r, pts[i + 1]); ctx.arc(pts[i], pts[i + 1], r, 0, 6.2832); } ctx.fill();
+  }
+  ctx.beginPath(); d3.geoPath(proj, ctx)(landGeo); ctx.strokeStyle = C.coast; ctx.lineWidth = .8; ctx.stroke();
+  // graticule
+  ctx.strokeStyle = C.grid; ctx.lineWidth = 1;
+  for (let lat = 10; lat <= 50; lat += 10) { const [, y] = proj([-100, lat]); ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(w, y); ctx.stroke(); }
+  for (let lon = -90; lon <= -10; lon += 20) { const [x] = proj([lon, 10]); ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, h); ctx.stroke(); }
+}
+const spriteCache = new Map();
+function sprite(color) {
+  let s = spriteCache.get(color); if (s) return s;
+  s = document.createElement('canvas'); s.width = s.height = 64; const c = s.getContext('2d'), g = c.createRadialGradient(32, 32, 0, 32, 32, 32);
+  const col = d3.color(color);
+  g.addColorStop(0, 'rgba(255,255,255,1)'); g.addColorStop(.18, col.copy({ opacity: 1 }) + ''); g.addColorStop(.45, col.copy({ opacity: .35 }) + ''); g.addColorStop(1, col.copy({ opacity: 0 }) + '');
+  c.fillStyle = g; c.fillRect(0, 0, 64, 64); spriteCache.set(color, s); return s;
+}
+function dot(ctx, x, y, r, col, ring) { ctx.beginPath(); ctx.arc(x, y, r, 0, 6.2832); ctx.fillStyle = col; ctx.fill(); if (ring) { ctx.lineWidth = 1.5; ctx.strokeStyle = C.bg; ctx.stroke(); } }
+function strokeXY(ctx, xy, a = 0, b = xy.length / 2 - 1) { ctx.beginPath(); for (let i = a; i <= b; i++) i === a ? ctx.moveTo(xy[2 * i], xy[2 * i + 1]) : ctx.lineTo(xy[2 * i], xy[2 * i + 1]); ctx.stroke(); }
+function nearest(list, mx, my, lim = 12) { let best = null, bd = lim * lim; for (const t of list) { const xy = t.xy; for (let i = 0; i < xy.length; i += 2) { const dx = xy[i] - mx, dy = xy[i + 1] - my, d = dx * dx + dy * dy; if (d < bd) { bd = d; best = t; } } } return best; }
+function pointerLL(M, ev) { const r = M.el.getBoundingClientRect(); const x = ev.clientX - r.left, y = ev.clientY - r.top; return { x, y, ll: M.proj.invert([x, y]) }; }
+const llTxt = ll => ll ? `${latTxt(ll[1])}  ${lonTxt(ll[0])}` : '';
+const stormTip = s => { const yi = yearInfo[s.y]; return `<div class="t">${s.n || tx('unnamed')} · ${s.y}</div><div class="d">${CATN[s.c]} · ${s.w} kt · ACE ${s.ace.toFixed(1)}</div><div class="d">${PHY[yi.p]} · ONI ${yi.oni > 0 ? '+' : ''}${yi.oni.toFixed(2)}</div><div class="d">${TYPES[s.k].name}${s.us ? tx('usLandfall') : ''}</div>`; };
+
+// visibility-driven animation loops
+function loop(el, fn) {
+  let raf = 0, on = false, last = 0;
+  const tick = now => { const dt = last ? Math.min(0.1, (now - last) / 1000) : 0; last = now; fn(dt, now); raf = requestAnimationFrame(tick); };
+  const io = new IntersectionObserver(es => es.forEach(e => { if (e.isIntersecting && !on && !reduce) { on = true; last = 0; raf = requestAnimationFrame(tick); } else if (!e.isIntersecting && on) { on = false; cancelAnimationFrame(raf); } }), { threshold: 0.05 });
+  io.observe(el); return { get on() { return on; } };
+}
+
+// =================== HERO ===================
+const hero = makeMap(document.getElementById('heroMap'));
+let heroItems = [], heroHover = null, heroT = 0;
+function heroSelYears() {
+  const ys = R.yrs.filter(d => !state.sel || (d.oni >= state.sel[0] && d.oni <= state.sel[1]));
+  return ys.map(d => d.y);
+}
+function renderHeroStatic() {
+  hero.resize();
+  const ys = new Set(heroSelYears()), ctx = hero.ctx[1];
+  ctx.clearRect(0, 0, hero.w, hero.h);
+  const list = R.storms.filter(s => ys.has(s.y)), r = rng(7);
+  heroItems = list.map(s => ({ s, xy: hero.project(s), off: r() * 200, gap: 20 + r() * 120 }));
+  const a = Math.min(.42, 3.2 / Math.sqrt(Math.max(list.length, 1)));
+  ctx.lineWidth = 1; ctx.lineJoin = 'round'; ctx.globalAlpha = a;
+  heroItems.forEach(t => { ctx.strokeStyle = C[t.s.p]; strokeXY(ctx, t.xy); }); ctx.globalAlpha = 1;
+  document.getElementById('heroTag').textContent = tx('heroTag', ys.size, list.length);
+  if (reduce || !heroLoop.on) drawHeroFx(0, true);
+}
+function drawHeroFx(dt, still) {
+  heroT += dt;
+  const ctx = hero.ctx[2]; ctx.clearRect(0, 0, hero.w, hero.h);
+  if (!still) {
+    ctx.lineCap = 'round';
+    const SPEED = 7, TAIL = 12;
+    for (const it of heroItems) {
+      const n = it.xy.length / 2, cyc = n + it.gap, pos = (heroT * SPEED + it.off) % cyc;
+      if (pos >= n - 1) continue;
+      const i = Math.floor(pos), f = pos - i, xy = it.xy, col = C[it.s.p];
+      const hx = xy[2 * i] + (xy[2 * i + 2] - xy[2 * i]) * f, hy = xy[2 * i + 1] + (xy[2 * i + 3] - xy[2 * i + 1]) * f;
+      ctx.strokeStyle = col;
+      for (let k = 0; k < TAIL && i - k >= 0; k++) {
+        const j = i - k; ctx.globalAlpha = (1 - k / TAIL) * .7; ctx.lineWidth = 1.6 * (1 - k / TAIL) + .3;
+        ctx.beginPath(); ctx.moveTo(xy[2 * j], xy[2 * j + 1]); ctx.lineTo(k === 0 ? hx : xy[2 * j + 2], k === 0 ? hy : xy[2 * j + 3]); ctx.stroke();
+      }
+      const w = it.s.wind[i] || 35; ctx.globalAlpha = 1;
+      dot(ctx, hx, hy, 1.4 + w / 60, col);
+    }
+    ctx.globalAlpha = 1;
+  }
+  drawHover(hero.ctx[3], hero, heroHover);
+}
+function drawHover(ctx, M, t) {
+  ctx.clearRect(0, 0, M.w, M.h); if (!t) return;
+  ctx.lineJoin = 'round'; ctx.strokeStyle = C.bg; ctx.lineWidth = 5; strokeXY(ctx, t.xy); ctx.strokeStyle = C.ink; ctx.lineWidth = 2; strokeXY(ctx, t.xy);
+  dot(ctx, t.xy[0], t.xy[1], 4, C[t.s.p] || C.ink, true);
+}
+const heroLoop = loop(hero.el, dt => drawHeroFx(dt, false));
+hero.cvs[3].addEventListener('pointermove', ev => {
+  const { x, y, ll } = pointerLL(hero, ev); document.getElementById('heroXY').textContent = llTxt(ll);
+  heroHover = nearest(heroItems, x, y); if (heroHover) showTip(stormTip(heroHover.s), ev); else hideTip();
+  if (!heroLoop.on) drawHover(hero.ctx[3], hero, heroHover);
+});
+hero.cvs[3].addEventListener('pointerleave', () => { heroHover = null; hideTip(); if (!heroLoop.on) drawHover(hero.ctx[3], hero, null); });
+
+function renderHud() {
+  const sel = heroSelYears(), all = R.yrs.map(d => d.y);
+  const m = (f, ys) => R.mean(f, ys);
+  const share = ys => { const n = d3.sum(ys, y => R.per[y].n); return n ? d3.sum(ys, y => R.per[y].k[0]) / n : NaN; };
+  const what = tx('what', state.cat);
+  const rows = [
+    { lab: tx('perYr', what), v: m(a => a.n, sel), b: m(a => a.n, all), f: fmt1 },
+    { lab: tx('aceYr'), v: m(a => a.ace, sel), b: m(a => a.ace, all), f: fmt0 },
+    { lab: tx('usYr'), v: m(a => a.us, sel), b: m(a => a.us, all), f: fmt1 },
+    { lab: tx('gulfShare'), v: share(sel), b: share(all), f: v => fmt0(v * 100), u: '%' },
+  ];
+  const oni = d3.mean(sel, y => yearInfo[y].oni);
+  const rng_ = state.sel ? `ONI ${state.sel[0] > 0 ? '+' : ''}${fmt1(state.sel[0])} ~ ${state.sel[1] > 0 ? '+' : ''}${fmt1(state.sel[1])}` : tx('allSeasons');
+  document.getElementById('hud').innerHTML = `<div class="stat sel"><span class="lab">${tx('selection')}</span><span class="val">${rng_}</span><span class="dl">${tx('selInfo', sel.length, isFinite(oni) ? (oni > 0 ? '+' : '') + fmt2(oni) : '—')}</span></div>` +
+    rows.map(r => { const d = (r.v / r.b - 1) * 100; const dl = !isFinite(d) || !state.sel ? tx('avg', state.y0) : `${tx('vsAvg')} <b class="${d >= 0 ? 'up' : 'dn'}">${d >= 0 ? '▲' : '▼'} ${fmt0(Math.abs(d))}%</b>`;
+      return `<div class="stat"><span class="lab">${r.lab}</span><span class="val">${isFinite(r.v) ? r.f(r.v) : '—'}${r.u ? `<small>${r.u}</small>` : ''}</span><span class="dl">${dl}</span></div>`; }).join('');
+}
+
+// ---------- ONI swarm + brush ----------
+const swarm = d3.select('#swarm');
+const PRESETS = [
+  { id: 'all', r: null },
+  { id: 'snina', r: [-3, -1] },
+  { id: 'nina', r: [-3, -0.5] },
+  { id: 'neu', r: [-0.49, 0.49] },
+  { id: 'nino', r: [0.5, 3] },
+  { id: 'snino', r: [1, 3] },
+  { id: 'now', r: [1.5, 3] },
+];
+const chipsEl = document.getElementById('chips');
+PRESETS.forEach(p => chipsEl.insertAdjacentHTML('beforeend', `<button type="button" class="chip" data-p="${p.id}"></button>`));
+let sx, brush, brushG, swarmW = 0, silent = false;
+function renderSwarm() {
+  const W = swarm.node().clientWidth, H = 150, B = 26; swarmW = W;
+  swarm.attr('viewBox', `0 0 ${W} ${H}`).selectAll('*').remove();
+  sx = d3.scaleLinear().domain([-2.2, 2.4]).range([14, W - 14]);
+  const r = Math.max(3.4, Math.min(6.2, W / 150));
+  swarm.append('rect').attr('x', sx(-2.2)).attr('width', sx(-0.5) - sx(-2.2)).attr('y', 0).attr('height', H - B).attr('fill', C.nina).attr('opacity', .045);
+  swarm.append('rect').attr('x', sx(0.5)).attr('width', sx(2.4) - sx(0.5)).attr('y', 0).attr('height', H - B).attr('fill', C.nino).attr('opacity', .045);
+  [-2, -1, 0, 1, 2].forEach(v => { swarm.append('line').attr('x1', sx(v)).attr('x2', sx(v)).attr('y1', 0).attr('y2', H - B).attr('stroke', C.line).attr('stroke-width', 1);
+    swarm.append('text').attr('x', sx(v)).attr('y', H - 8).attr('text-anchor', 'middle').attr('fill', C.muted).attr('font-size', 10.5).attr('font-family', '-apple-system, "PingFang SC", "Noto Sans SC", sans-serif').text((v > 0 ? '+' : '') + v + '°C'); });
+  swarm.append('text').attr('x', sx(-2.15)).attr('y', 14).attr('fill', C.nina).attr('font-size', 11).text(tx('swL'));
+  swarm.append('text').attr('x', sx(2.35)).attr('y', 14).attr('text-anchor', 'end').attr('fill', C.nino).attr('font-size', 11).text(tx('swR'));
+  // dodge layout
+  const placed = [], mid = (H - B) / 2 + 6, out = [];
+  [...D.years].sort((a, b) => a.oni - b.oni).forEach(d => {
+    const x = sx(d.oni); let y = 0, k = 0;
+    for (;;) { y = mid + (k % 2 ? 1 : -1) * Math.ceil(k / 2) * (2 * r + 1); if (!placed.some(p => (p.x - x) ** 2 + (p.y - y) ** 2 < (2 * r + 0.8) ** 2)) break; k++; if (k > 40) break; }
+    placed.push({ x, y }); out.push({ d, x, y });
+  });
+  brush = d3.brushX().extent([[sx.range()[0], 0], [sx.range()[1], H - B]])
+    .on('brush end', ev => { if (silent) return; if (!ev.selection) { state.sel = null; } else { const [a, b] = ev.selection.map(sx.invert); state.sel = [a, b]; }
+      markChips(); updateSelection(); });
+  brushG = swarm.append('g').call(brush);
+  const g = swarm.append('g');
+  g.selectAll('circle').data(out).join('circle').attr('cx', o => o.x).attr('cy', o => o.y).attr('r', r)
+    .call(dotStyle).style('cursor', 'pointer').style('pointer-events', 'all')
+    .on('pointermove', (ev, o) => { const a = R.per[o.d.y]; showTip(`<div class="t">${o.d.y} · ${PHN[o.d.p]}</div><div class="d">ONI ${o.d.oni > 0 ? '+' : ''}${o.d.oni.toFixed(2)} °C</div><div class="d">${a ? tx('swStorms', a.n, fmt0(a.ace)) : tx('outside')}</div><div class="d">${tx('clickReplay')}</div>`, ev); })
+    .on('pointerleave', hideTip)
+    .on('click', (ev, o) => { replaySet(o.d.y, true); scrollToReplay(); });
+  swarm.node().__dots = g; swarm.node().__labs = swarm.append('g').style('pointer-events', 'none'); swarm.node().__out = out; swarm.node().__r = r;
+  renderSelMarks();
+  if (state.sel) { silent = true; brushG.call(brush.move, state.sel.map(v => sx(Math.max(-2.2, Math.min(2.4, v))))); silent = false; }
+}
+const inSel = d => !state.sel || (d.oni >= state.sel[0] && d.oni <= state.sel[1]);
+function dotStyle(s) {
+  s.attr('fill', o => o.d.y >= state.y0 && inSel(o.d) ? C[o.d.p] : 'none').attr('stroke', o => C[o.d.p])
+   .attr('stroke-width', o => o.d.y < state.y0 ? 1 : 1.5).attr('stroke-dasharray', o => o.d.y < state.y0 ? '2 2' : null)
+   .attr('opacity', o => o.d.y < state.y0 ? .3 : inSel(o.d) ? 1 : .6);
+}
+function renderSelMarks() {
+  const node = swarm.node(), labs = node.__labs; if (!labs) return; labs.selectAll('*').remove();
+  const ys = R.yrs.filter(d => inSel(d)).map(d => d.y).sort((a, b) => a - b), el = document.getElementById('selLine');
+  if (!state.sel) el.innerHTML = tx('selNone');
+  else if (!ys.length) el.innerHTML = tx('selEmpty');
+  else if (ys.length <= 12) el.innerHTML = tx('selList', ys.length, ys.join(', '));
+  else { const o = d3.mean(ys, y => yearInfo[y].oni); el.innerHTML = tx('selMany', ys.length, (o > 0 ? '+' : '') + fmt2(o)); }
+  if (!state.sel || !ys.length || ys.length > 8) return;
+  const set = new Set(ys), r = node.__r;
+  node.__out.filter(o => set.has(o.d.y)).forEach(o => labs.append('text').attr('x', o.x + r + 3).attr('y', o.y + 3.5).attr('font-size', 10.5).attr('fill', C.ink).attr('paint-order', 'stroke').attr('stroke', C.bg).attr('stroke-width', 3).text(o.d.y));
+}
+function restyleDots() { const g = swarm.node().__dots; if (g) g.selectAll('circle').call(dotStyle); renderSelMarks(); }
+function markChips() { chipsEl.querySelectorAll('.chip').forEach(b => { const p = PRESETS.find(q => q.id === b.dataset.p); b.classList.toggle('on', p.r ? !!state.sel && Math.abs(p.r[0] - state.sel[0]) < 1e-6 && Math.abs(p.r[1] - state.sel[1]) < 1e-6 : !state.sel); }); }
+let selRaf = 0;
+function updateSelection() { restyleDots(); cancelAnimationFrame(selRaf); selRaf = requestAnimationFrame(() => { renderHud(); renderHeroStatic(); }); }
+function setPreset(id) {
+  const p = PRESETS.find(q => q.id === id); silent = true;
+  if (!p.r) { brushG.call(brush.move, null); state.sel = null; }
+  else { state.sel = p.r.slice(); brushG.call(brush.move, p.r.map(v => sx(Math.max(-2.2, Math.min(2.4, v))))); }
+  silent = false; markChips(); updateSelection();
+}
+chipsEl.addEventListener('click', e => { const b = e.target.closest('.chip'); if (b) setPreset(b.dataset.p); });
+document.getElementById('nowBtn').addEventListener('click', () => { setPreset('now'); document.getElementById('heroMap').scrollIntoView({ behavior: reduce ? 'auto' : 'smooth', block: 'center' }); });
+
+// =================== DUEL ===================
+function renderDuel() {
+  const A = R.byPhase.nino, B = R.byPhase.nina, what = tx('what', state.cat);
+  const M = [
+    { n: tx('perYr', what), f: a => a.n, fm: fmt1 },
+    { n: tx('aceYr'), f: a => a.ace, fm: fmt0 },
+    { n: tx('usYr'), f: a => a.us, fm: fmt1 },
+    { n: tx('gulfYr'), f: a => a.k[0], fm: fmt1 },
+  ];
+  document.getElementById('duelSub').textContent = tx('duelSub', state.y0, B.length, A.length);
+  const host = document.getElementById('duel');
+  const rows = M.map(m => { const vb = R.mean(m.f, B), va = R.mean(m.f, A), p = permFn(ys => R.mean(m.f, ys), A, B); return { m, vb, va, p }; });
+  const max = r => Math.max(r.vb, r.va) || 1;
+  if (!host.children.length) {
+    host.innerHTML = `<div class="duel-head"></div>` + rows.map(() => `<div class="drow"><div class="v l"></div><div class="bar l"><i></i></div><div class="mid"><span class="n"></span><span class="x"></span><span class="p"></span></div><div class="bar r"><i></i></div><div class="v r"></div></div>`).join('');
+  }
+  host.querySelector('.duel-head').innerHTML = tx('duelHead');
+  host.querySelectorAll('.drow').forEach((el, i) => { const r = rows[i];
+    el.querySelector('.v.l').textContent = isFinite(r.vb) ? r.m.fm(r.vb) : '—'; el.querySelector('.v.r').textContent = isFinite(r.va) ? r.m.fm(r.va) : '—';
+    el.querySelector('.bar.l i').style.width = (r.vb / max(r) * 100 || 0) + '%'; el.querySelector('.bar.r i').style.width = (r.va / max(r) * 100 || 0) + '%';
+    el.querySelector('.n').textContent = r.m.n; el.querySelector('.x').textContent = r.va > 0 ? `×${fmt1(r.vb / r.va)}` : '—';
+    const pe = el.querySelector('.p'); pe.textContent = `${pTxt(r.p)} · ${r.p < 0.05 ? tx('sig') : tx('nsig')}`; pe.classList.toggle('ok', r.p < 0.05); });
+}
+
+// =================== WIPE ===================
+const wipe = makeMap(document.getElementById('wipeMap'));
+const WG = 1, WLON0 = -102, WLAT0 = 5, WNX = 97, WNY = 50;
+let dens = null;
+function computeDensity() {
+  const raw = { nino: new Float32Array(WNX * WNY), nina: new Float32Array(WNX * WNY) };
+  R.storms.forEach(s => { if (s.p === 'neutral') return; const seen = new Set();
+    for (let i = 0; i < s.lon.length; i++) { const ix = Math.floor((s.lon[i] - WLON0) / WG), iy = Math.floor((s.lat[i] - WLAT0) / WG); if (ix >= 0 && iy >= 0 && ix < WNX && iy < WNY) seen.add(iy * WNX + ix);
+      if (i < s.lon.length - 1) { const mx = (s.lon[i] + s.lon[i + 1]) / 2, my = (s.lat[i] + s.lat[i + 1]) / 2, jx = Math.floor((mx - WLON0) / WG), jy = Math.floor((my - WLAT0) / WG); if (jx >= 0 && jy >= 0 && jx < WNX && jy < WNY) seen.add(jy * WNX + jx); } }
+    seen.forEach(c => raw[s.p][c]++); });
+  const out = {};
+  for (const p of ['nino', 'nina']) { const nY = Math.max(R.byPhase[p].length, 1), a = raw[p], b = new Float32Array(a.length);
+    for (let y = 0; y < WNY; y++) for (let x = 0; x < WNX; x++) { let s = 0, w = 0; for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) { const xx = x + dx, yy = y + dy; if (xx < 0 || yy < 0 || xx >= WNX || yy >= WNY) continue; const k = dx || dy ? (dx && dy ? .5 : .75) : 1; s += a[yy * WNX + xx] * k; w += k; } b[y * WNX + x] = s / w / nY; }
+    out[p] = b; }
+  out.max = d3.max([...out.nino, ...out.nina]) || 1;
+  const diffs = out.nina.map((v, i) => v - out.nino[i]); out.diff = diffs; out.lim = d3.quantile([...diffs].map(Math.abs).sort(d3.ascending), 0.985) || 0.1;
+  dens = out;
+}
+function layerCanvas(vals, colorFn) {
+  const c = document.createElement('canvas'); c.width = WNX; c.height = WNY; const x = c.getContext('2d'), img = x.createImageData(WNX, WNY);
+  for (let iy = 0; iy < WNY; iy++) for (let ix = 0; ix < WNX; ix++) { const v = vals[iy * WNX + ix], o = ((WNY - 1 - iy) * WNX + ix) * 4, [r, g, b, a] = colorFn(v); img.data[o] = r; img.data[o + 1] = g; img.data[o + 2] = b; img.data[o + 3] = a; }
+  x.putImageData(img, 0, 0); return c;
+}
+let layers = {};
+function buildLayers() {
+  const cN = d3.rgb(C.nino), cL = d3.rgb(C.nina), mx = dens.max, lim = dens.lim;
+  const heat = col => v => { const t = Math.min(1, v / mx); return [col.r, col.g, col.b, Math.round(255 * Math.pow(t, .7) * .9)]; };
+  layers.nino = layerCanvas(dens.nino, heat(cN)); layers.nina = layerCanvas(dens.nina, heat(cL));
+  layers.diff = layerCanvas(dens.diff, v => { const t = Math.min(1, Math.abs(v) / lim), col = v > 0 ? cL : cN; return [col.r, col.g, col.b, Math.round(255 * Math.pow(t, .75) * .95)]; });
+}
+function drawWipe() {
+  wipe.resize(); const ctx = wipe.ctx[1], { w, h, proj } = wipe; ctx.clearRect(0, 0, w, h);
+  const [x0, y0] = proj([WLON0, WLAT0 + WNY * WG]), [x1, y1] = proj([WLON0 + WNX * WG, WLAT0]);
+  ctx.imageSmoothingEnabled = true; ctx.imageSmoothingQuality = 'high'; ctx.filter = 'blur(' + Math.max(2, w / 260).toFixed(1) + 'px)';
+  const dx = state.wipe * w;
+  if (state.mode === 'wipe') {
+    ctx.save(); ctx.beginPath(); ctx.rect(0, 0, dx, h); ctx.clip(); ctx.drawImage(layers.nino, x0, y0, x1 - x0, y1 - y0); ctx.restore();
+    ctx.save(); ctx.beginPath(); ctx.rect(dx, 0, w - dx, h); ctx.clip(); ctx.drawImage(layers.nina, x0, y0, x1 - x0, y1 - y0); ctx.restore();
+  } else { ctx.drawImage(layers.diff, x0, y0, x1 - x0, y1 - y0); }
+  ctx.filter = 'none';
+  ctx.beginPath(); d3.geoPath(proj, ctx)(landGeo); ctx.strokeStyle = C.coast; ctx.lineWidth = .8; ctx.stroke();
+  // centroid markers
+  PH.filter(p => p !== 'neutral').forEach(p => { const ys = R.byPhase[p]; const c = [R.momStat(0, ys), R.momStat(1, ys)]; if (!c.every(isFinite)) return; const [x, y] = proj(c);
+    dot(ctx, x, y, 5, C[p], true);
+    ctx.font = '500 12px -apple-system, "PingFang SC", "Noto Sans SC", sans-serif'; ctx.fillStyle = C.ink; ctx.lineWidth = 3; ctx.strokeStyle = C.halo; ctx.textAlign = 'right'; const t = tx('centroid', PHY[p]), ty = p === 'nino' ? y - 12 : y + 20;
+    const labelX = Math.max(ctx.measureText(t).width + 8, Math.min(w - 8, x - 12));
+    ctx.strokeText(t, labelX, ty); ctx.fillText(t, labelX, ty); ctx.textAlign = 'left'; });
+  const o = wipe.ctx[2]; o.clearRect(0, 0, w, h);
+  const hd = document.getElementById('wh'); hd.hidden = state.mode !== 'wipe'; hd.style.left = dx + 'px';
+  document.getElementById('wl').hidden = document.getElementById('wr').hidden = state.mode !== 'wipe';
+  if (state.mode === 'wipe') { o.strokeStyle = C.ink; o.lineWidth = 1; o.beginPath(); o.moveTo(dx, 0); o.lineTo(dx, h); o.stroke(); }
+  const lg = document.getElementById('wipeLegend');
+  lg.innerHTML = state.mode === 'wipe'
+    ? `<span><span class="ramp" style="display:inline-block;vertical-align:middle;background:linear-gradient(90deg,transparent,${C.nino})"></span> ${PHY.nino}</span><span><span class="ramp" style="display:inline-block;vertical-align:middle;background:linear-gradient(90deg,transparent,${C.nina})"></span> ${PHY.nina}</span><span class="mono" style="color:var(--muted)">${tx('wipeLeg', fmt2(dens.max))}</span>`
+    : `<span><span class="ramp" style="display:inline-block;vertical-align:middle;background:linear-gradient(90deg,${C.nino},transparent 50%,${C.nina})"></span></span><span>${tx('diffLeg')}</span><span class="mono" style="color:var(--muted)">${tx('diffSat', fmt2(dens.lim))}</span>`;
+}
+function renderWipe() { computeDensity(); buildLayers(); drawWipe(); }
+(function wipeInteract() {
+  const hd = document.getElementById('wh'); let drag = false;
+  const setX = ev => { const r = wipe.el.getBoundingClientRect(); state.wipe = Math.max(0.02, Math.min(0.98, (ev.clientX - r.left) / r.width)); drawWipe(); };
+  hd.addEventListener('pointerdown', ev => { drag = true; hd.setPointerCapture(ev.pointerId); });
+  hd.addEventListener('pointermove', ev => { if (drag) setX(ev); });
+  hd.addEventListener('pointerup', () => { drag = false; });
+  hd.addEventListener('keydown', ev => { if (ev.key === 'ArrowLeft' || ev.key === 'ArrowRight') { state.wipe = Math.max(0.02, Math.min(0.98, state.wipe + (ev.key === 'ArrowLeft' ? -0.04 : 0.04))); drawWipe(); ev.preventDefault(); } });
+  const top = wipe.cvs[2];
+  // Browsers cancel a pointer sequence when a touch becomes a page scroll.
+  for (const target of [hd, top]) {
+    for (const event of ['pointercancel', 'lostpointercapture']) target.addEventListener(event, () => { drag = false; });
+  }
+  top.addEventListener('pointerdown', ev => { if (state.mode === 'wipe') { setX(ev); drag = true; top.setPointerCapture(ev.pointerId); } });
+  top.addEventListener('pointerup', () => { drag = false; });
+  top.addEventListener('pointermove', ev => {
+    if (drag) setX(ev);
+    const { ll } = pointerLL(wipe, ev); const out = document.getElementById('wipeXY'); if (!ll || !dens) return;
+    const ix = Math.floor((ll[0] - WLON0) / WG), iy = Math.floor((ll[1] - WLAT0) / WG); if (ix < 0 || iy < 0 || ix >= WNX || iy >= WNY) return;
+    const c = iy * WNX + ix; out.innerHTML = `${llTxt(ll)} · ${tx('wipeRead', `<span style="color:var(--nino)">${fmt2(dens.nino[c])}</span>`, `<span style="color:var(--nina)">${fmt2(dens.nina[c])}</span>`)}`;
+  });
+  document.getElementById('mWipe').addEventListener('click', () => { state.mode = 'wipe'; document.getElementById('mWipe').classList.add('on'); document.getElementById('mDiff').classList.remove('on'); drawWipe(); });
+  document.getElementById('mDiff').addEventListener('click', () => { state.mode = 'diff'; document.getElementById('mDiff').classList.add('on'); document.getElementById('mWipe').classList.remove('on'); drawWipe(); });
+})();
+
+// =================== REPLAY ===================
+const rp = makeMap(document.getElementById('rpMap'));
+const RP = { year: 2020, T: 0, T0: 0, T1: 1, playing: false, speed: 3, items: [], pick: null, autoplayed: false };
+const RP_YEARS = [2020, 2010, 2005, 1997, 2015, 2023];
+const rpChips = document.getElementById('rpChips');
+// Keep the section heading below the navigation even when mobile controls wrap.
+function scrollToReplay() {
+  const heading = document.querySelector('#s-replay .sec-head');
+  const nav = document.querySelector('.top');
+  const inset = parseFloat(getComputedStyle(nav).top) || 0;
+  scrollTo({ top: scrollY + heading.getBoundingClientRect().top - nav.offsetHeight - inset - 24, behavior: reduce ? 'auto' : 'smooth' });
+}
+function renderRpChips() {
+  rpChips.querySelectorAll('.chip').forEach(b => b.remove());
+  RP_YEARS.forEach(y => { const d = yearInfo[y], n = (byYear.get(y) || []).length;
+    rpChips.insertAdjacentHTML('beforeend', `<button type="button" class="chip${y === RP.year ? ' on' : ''}" data-y="${y}"><span style="color:var(--${d.p})">●</span> ${tx('rpChip', y, PHN[d.p], (d.oni > 0 ? '+' : '') + d.oni.toFixed(1), n)}</button>`); });
+}
+rpChips.addEventListener('click', e => { const b = e.target.closest('.chip'); if (b) replaySet(+b.dataset.y, true); });
+const renderCatLegend = () => document.getElementById('catLegend').innerHTML = CATN.map((n, i) => `<span><i style="background:var(--c${i})"></i>${n}</span>`).join('');
+function replaySet(y, play) {
+  RP.year = Math.max(1950, Math.min(2025, y)); const list = (byYear.get(RP.year) || []).slice().sort((a, b) => a.t0 - b.t0);
+  rp.resize();
+  RP.items = list.map(s => ({ s, xy: rp.project(s) }));
+  const jun1 = 151 * 24, dec1 = 334 * 24;
+  RP.T0 = Math.min(jun1, (d3.min(list, s => s.t0) ?? jun1) - 24); RP.T1 = Math.max(dec1, (d3.max(list, s => s.t1) ?? dec1) + 24);
+  RP.T = RP.T1; RP.pick = null;
+  const d = yearInfo[RP.year]; document.getElementById('yr').textContent = RP.year;
+  const bd = document.getElementById('yBadge'); bd.textContent = `${PHN[d.p]} · ONI ${d.oni > 0 ? '+' : ''}${d.oni.toFixed(2)}`; bd.style.color = C[d.p];
+  rpChips.querySelectorAll('.chip').forEach(b => b.classList.toggle('on', +b.dataset.y === RP.year));
+  document.getElementById('slist').innerHTML = RP.items.map((t, i) => `<button type="button" class="si" data-i="${i}"><span class="cb" style="background:var(--c${t.s.c})">${CATS[t.s.c]}</span><span class="nm">${t.s.n || tx('unnamed')}</span><span class="dt">${dateTxt(RP.year, t.s.t0, true)}</span></button>`).join('') || `<p class="hint" style="padding:10px">${tx('noRecord')}</p>`;
+  if (play) RP.autoplayed = true;
+  if (play && !reduce) { RP.T = RP.T0; setPlaying(true); } else { setPlaying(false); drawReplay(); }
+}
+function refreshReplay() {
+  const initialized = RP.items.length > 0, { T, playing, pick } = RP;
+  replaySet(RP.year, false);
+  if (initialized) { RP.T = Math.max(RP.T0, Math.min(RP.T1, T)); RP.pick = pick; setPlaying(playing); drawReplay(); }
+}
+function dateTxt(y, h, short) { const t = new Date(Date.UTC(y, 0, 1) + h * 3600e3); const mm = String(t.getUTCMonth() + 1).padStart(2, '0'), dd = String(t.getUTCDate()).padStart(2, '0'); return short ? `${mm}-${dd}` : `${mm}-${dd} ${String(t.getUTCHours()).padStart(2, '0')}:00Z`; }
+function drawReplay() {
+  const ctx = rp.ctx[1], { w, h } = rp; ctx.clearRect(0, 0, w, h); ctx.lineJoin = 'round'; ctx.lineCap = 'round';
+  let born = 0, hur = 0, ace = 0, live = 0; const T = RP.T; const heads = [];
+  RP.items.forEach((t, idx) => { const s = t.s, xy = t.xy, n = xy.length / 2; if (T < s.t0) return; born++;
+    const k = Math.min(n - 1, (T - s.t0) / 6), i = Math.floor(k), f = k - i; let mw = 0;
+    for (let j = 0; j <= i; j++) { const wv = s.wind[j]; if (s.trop[j] && wv > mw) mw = wv; if (s.trop[j] && wv >= 34) ace += wv * wv / 1e4; }
+    if (mw >= 64) hur++;
+    const done = k >= n - 1, picked = RP.pick === idx;
+    // segments colored by intensity
+    ctx.globalAlpha = done ? (picked ? 1 : .6) : .95; ctx.lineWidth = done ? (picked ? 2.4 : 1.3) : 1.8;
+    for (let j = 0; j < i; j++) { ctx.strokeStyle = C.cat[catOf(s.wind[j])]; ctx.beginPath(); ctx.moveTo(xy[2 * j], xy[2 * j + 1]); ctx.lineTo(xy[2 * j + 2], xy[2 * j + 3]); ctx.stroke(); }
+    if (!done && i < n - 1) { const hx = xy[2 * i] + (xy[2 * i + 2] - xy[2 * i]) * f, hy = xy[2 * i + 1] + (xy[2 * i + 3] - xy[2 * i + 1]) * f; ctx.strokeStyle = C.cat[catOf(s.wind[i])]; ctx.beginPath(); ctx.moveTo(xy[2 * i], xy[2 * i + 1]); ctx.lineTo(hx, hy); ctx.stroke(); heads.push({ hx, hy, w: s.wind[i], s }); live++; }
+    ctx.globalAlpha = 1;
+  });
+  heads.forEach(hd => { const r = 3 + hd.w / 22, col = C.cat[catOf(hd.w)]; ctx.globalAlpha = .18; dot(ctx, hd.hx, hd.hy, r * 2.2, col); ctx.globalAlpha = 1; dot(ctx, hd.hx, hd.hy, r, col, true); });
+  ctx.font = '600 11.5px -apple-system, "PingFang SC", "Noto Sans SC", sans-serif'; ctx.lineWidth = 3; ctx.strokeStyle = C.bg; ctx.fillStyle = C.ink;
+  heads.forEach(hd => { const lab = `${hd.s.n || '—'} ${hd.w}kt`; ctx.strokeText(lab, hd.hx + 10, hd.hy - 8); ctx.fillText(lab, hd.hx + 10, hd.hy - 8); });
+  document.getElementById('clock').innerHTML = `<b>${dateTxt(RP.year, T)}</b>`;
+  document.getElementById('rpScrub').value = Math.round((T - RP.T0) / (RP.T1 - RP.T0) * 1000);
+  document.getElementById('rpHud').innerHTML = [[tx('rpHud')[0], born], [tx('rpHud')[1], hur], [tx('rpHud')[2], fmt0(ace)], [tx('rpHud')[3], live]].map(([l, v]) => `<div class="stat"><span class="lab">${l}</span><span class="val">${v}</span></div>`).join('');
+  document.querySelectorAll('#slist .si').forEach(b => { const s = RP.items[+b.dataset.i].s; b.classList.toggle('born', T >= s.t0); b.classList.toggle('live', T >= s.t0 && T < s.t1); b.classList.toggle('pick', RP.pick === +b.dataset.i); });
+}
+function setPlaying(on) { RP.playing = on; document.getElementById('playIcon').textContent = on ? '❚❚' : '▶'; document.getElementById('playTxt').textContent = on ? tx('pause') : (RP.T >= RP.T1 ? tx('replay') : tx('play')); }
+// Mobile controls can be visible before the map; keep the replay clock running for the section.
+loop(document.getElementById('s-replay'), dt => { if (!RP.playing) return; RP.T += dt * 24 * 3.2 * RP.speed; if (RP.T >= RP.T1) { RP.T = RP.T1; setPlaying(false); } drawReplay(); });
+new IntersectionObserver(es => es.forEach(e => { if (e.isIntersecting && !RP.autoplayed && !reduce) { RP.autoplayed = true; RP.T = RP.T0; setPlaying(true); } }), { threshold: 0.45 }).observe(rp.el);
+document.getElementById('play').addEventListener('click', () => { RP.autoplayed = true; if (reduce) { RP.T = RP.T1; drawReplay(); return; } if (!RP.playing && RP.T >= RP.T1) RP.T = RP.T0; setPlaying(!RP.playing); });
+document.getElementById('yPrev').addEventListener('click', () => replaySet(RP.year - 1, true));
+document.getElementById('yNext').addEventListener('click', () => replaySet(RP.year + 1, true));
+document.querySelectorAll('input[name=spd]').forEach(el => el.addEventListener('change', () => { RP.speed = +el.value; }));
+document.getElementById('rpScrub').addEventListener('input', e => { RP.autoplayed = true; RP.T = RP.T0 + (+e.target.value / 1000) * (RP.T1 - RP.T0); setPlaying(false); drawReplay(); });
+document.getElementById('slist').addEventListener('click', e => { const b = e.target.closest('.si'); if (!b) return; const i = +b.dataset.i; RP.pick = RP.pick === i ? null : i; drawReplay(); });
+rp.cvs[2].addEventListener('pointermove', ev => { const { x, y, ll } = pointerLL(rp, ev); document.getElementById('rpXY').textContent = llTxt(ll);
+  const vis = RP.items.filter(t => RP.T >= t.s.t0); const t = nearest(vis, x, y); if (t) showTip(stormTip(t.s) + `<div class="d">${dateTxt(RP.year, t.s.t0)} → ${dateTxt(RP.year, t.s.t1)}</div>`, ev); else hideTip(); });
+rp.cvs[2].addEventListener('pointerleave', hideTip);
+rp.cvs[2].addEventListener('click', ev => { const { x, y } = pointerLL(rp, ev); const t = nearest(RP.items.filter(t => RP.T >= t.s.t0), x, y); RP.pick = t ? RP.items.indexOf(t) : null; drawReplay(); });
+
+// =================== TYPES ===================
+const typeMaps = [];
+let typeDash = 0;
+function renderTypes() {
+  const host = document.getElementById('types');
+  if (!host.children.length) {
+    D.clusters.forEach((c, k) => host.insertAdjacentHTML('beforeend', `<article class="tcard" id="t${k}"><div class="map"><canvas></canvas><canvas></canvas><canvas></canvas></div><div><h3></h3><p class="tl"></p></div><div class="big"><b></b><span></span></div><div class="tb"></div></article>`));
+    D.clusters.forEach((c, k) => typeMaps[k] = makeMap(host.querySelector(`#t${k} .map`)));
+  }
+  D.clusters.forEach((c, k) => {
+    const M = typeMaps[k]; M.resize(); const ctx = M.ctx[1]; ctx.clearRect(0, 0, M.w, M.h);
+    const list = R.storms.filter(s => s.k === k); ctx.lineWidth = .8; ctx.globalAlpha = Math.min(.5, 3.4 / Math.sqrt(Math.max(list.length, 1)));
+    list.forEach(s => { ctx.strokeStyle = C[s.p]; strokeXY(ctx, M.project(s)); }); ctx.globalAlpha = 1;
+    M.mean = new Float32Array(c.mean.flatMap(d => M.proj(d)));
+    const rate = p => R.mean(a => a.k[k], R.byPhase[p]);
+    const v = Object.fromEntries(PH.map(p => [p, rate(p)])), mx = d3.max(PH, p => v[p]) || 1;
+    const card = document.getElementById('t' + k), ratio = v.nino > 0 ? v.nina / v.nino : NaN;
+    card.querySelector('.big b').textContent = isFinite(ratio) ? `×${fmt1(ratio)}` : '—';
+    card.querySelector('.big b').style.color = ratio >= 1.5 ? C.nina : C.ink;
+    card.querySelector('.big span').textContent = tx('ratioNote');
+    card.querySelector('h3').textContent = TYPES[k].name; card.querySelector('.tl').textContent = TYPES[k].tl;
+    card.querySelector('.tb').innerHTML = PH.map(p => `<div class="r"><span>${PHN[p]}</span><div class="t"><i style="width:${v[p] / mx * 100}%;background:var(--${p})"></i></div><span class="n">${fmt1(v[p])}</span></div>`).join('');
+    drawTypeFx(k, 0);
+  });
+}
+function drawTypeFx(k, dash) {
+  const M = typeMaps[k]; if (!M || !M.mean) return; const ctx = M.ctx[2]; ctx.clearRect(0, 0, M.w, M.h); ctx.lineJoin = ctx.lineCap = 'round';
+  ctx.strokeStyle = C.halo; ctx.lineWidth = 5; strokeXY(ctx, M.mean);
+  ctx.strokeStyle = C.ink; ctx.lineWidth = 2; ctx.setLineDash([6, 7]); ctx.lineDashOffset = -dash; strokeXY(ctx, M.mean); ctx.setLineDash([]);
+  const n = M.mean.length / 2, ex = M.mean[2 * n - 2], ey = M.mean[2 * n - 1], a = Math.atan2(ey - M.mean[2 * n - 3], ex - M.mean[2 * n - 4]);
+  ctx.fillStyle = C.ink; ctx.beginPath(); ctx.moveTo(ex + 9 * Math.cos(a), ey + 9 * Math.sin(a)); ctx.lineTo(ex + 9 * Math.cos(a + 2.5), ey + 9 * Math.sin(a + 2.5)); ctx.lineTo(ex + 9 * Math.cos(a - 2.5), ey + 9 * Math.sin(a - 2.5)); ctx.fill();
+  dot(ctx, M.mean[0], M.mean[1], 4, C.ink, true);
+}
+loop(document.getElementById('types'), dt => { typeDash += dt * 30; for (let k = 0; k < typeMaps.length; k++) drawTypeFx(k, typeDash); });
+
+// =================== MOMENTS (replicating Nakamura et al. 2009) ===================
+const MOM = [
+  { l: 'E[x]', o: 1, f: lonTxt },
+  { l: 'E[y]', o: 1, f: latTxt },
+  { l: 'Var[x]', o: 2, f: fmt0 },
+  { l: 'Var[y]', o: 2, f: fmt0 },
+  { l: 'Cov[x,y]', o: 2, f: fmt0 },
+  { l: 'Skew[x]', o: 3, f: fmt2 },
+  { l: 'Skew[y]', o: 3, f: fmt2 },
+  { l: 'Kurt[x]', o: 4, f: fmt2 },
+  { l: 'Kurt[y]', o: 4, f: fmt2 },
+];
+const EXAMPLES = [['Katrina', 2005], ['Sandy', 2012], ['Ivan', 2004], ['Florence', 2018]]
+  .map(([n, y]) => D.storms.find(s => s.n === n && s.y === y)).filter(s => s && s.mo);
+let exPick = 0;
+const exMap = makeMap(document.getElementById('exMap'));
+const cenMap = makeMap(document.getElementById('cenMap'));
+let cenPts = [];
+
+function kde(vals, grid) {
+  const n = vals.length, sd = d3.deviation(vals) || 1, bw = 1.06 * sd * Math.pow(n, -0.2), c = 1 / (n * bw * Math.sqrt(2 * Math.PI));
+  return grid.map(g => { let s = 0; for (const v of vals) { const z = (g - v) / bw; s += Math.exp(-0.5 * z * z); } return s * c; });
+}
+// 1-sigma ellipse of a lon/lat covariance on an equirectangular map (k = px per degree; screen y points down)
+function covEllipse(ctx, x, y, vxx, vyy, vxy, k, nsig) {
+  const a = vxx * k * k, c = vyy * k * k, b = -vxy * k * k, tr = (a + c) / 2, d = Math.sqrt(((a - c) / 2) ** 2 + b * b);
+  const l1 = tr + d, l2 = Math.max(tr - d, 0), ang = 0.5 * Math.atan2(2 * b, a - c);
+  ctx.beginPath(); ctx.ellipse(x, y, nsig * Math.sqrt(l1), nsig * Math.sqrt(l2), ang, 0, 2 * Math.PI);
+  return { l1, l2, ang };
+}
+const pxPerDeg = M => M.proj.scale() * Math.PI / 180;
+
+function renderVerdicts() {
+  const A = R.byPhase.nino, B = R.byPhase.nina, ms = (j, ys) => R.momStat(j, ys);
+  const dx = ms(0, A) - ms(0, B), dy = ms(1, A) - ms(1, B);
+  const px = permFn(ys => ms(0, ys), A, B), py = permFn(ys => ms(1, ys), A, B);
+  const cA = ms(4, A), cB = ms(4, B), pt = permFn(ys => ms(4, ys), A, B);
+  const card = (k, v, s, ok, pill) => `<div class="vcard"><span class="k">${k}</span><span class="v">${v}</span><span class="s">${s}</span><span class="pill${ok ? ' ok' : ''}">${pill}</span></div>`;
+  document.getElementById('verdicts').innerHTML =
+    card(tx('vCen'), `${fmt1(Math.abs(dx))}° ${dx >= 0 ? tx('east') : tx('west')}`, tx('vCenSub', fmt1(Math.abs(dy)), dy >= 0 ? tx('north') : tx('south'), pTxt(px), pTxt(py)), px < 0.05, px < 0.05 ? tx('stLit') : tx('stNs')) +
+    card(tx('vTilt'), isFinite(cA / cB) && cB > 0 ? `×${fmt1(cA / cB)}` : '—', tx('vTiltSub', fmt0(cA), fmt0(cB), pTxt(pt)), pt < 0.05, pt < 0.05 ? tx('stLit') : tx('stNs')) +
+    card(tx('vHigh'), `+${ML.gain.delta.toFixed(2)} AUC`, tx('vHighSub', ML.gain.auc12.toFixed(2), ML.gain.auc9.toFixed(2), (ML.gain.ci_lo > 0 ? '+' : '') + ML.gain.ci_lo.toFixed(3), '+' + ML.gain.ci_hi.toFixed(3)), ML.gain.ci_lo > 0, ML.gain.ci_lo > 0 ? tx('stNone') : tx('stOpen'));
+}
+
+function renderExChips() {
+  const el = document.getElementById('exChips');
+  el.innerHTML = `<span>${tx('exPick')}</span>` + EXAMPLES.map((s, i) => `<button type="button" class="chip${i === exPick ? ' on' : ''}" data-x="${i}">${s.n} ${s.y}</button>`).join('');
+}
+document.getElementById('exChips').addEventListener('click', e => { const b = e.target.closest('.chip'); if (!b) return; exPick = +b.dataset.x; renderExChips(); renderExample(); });
+
+function renderExample() {
+  const s = EXAMPLES[exPick]; if (!s) return;
+  // the nine numbers for this storm
+  const yi = yearInfo[s.y];
+  document.getElementById('exList').innerHTML = `<div class="exhead"><b>${s.n} ${s.y}</b><span>${CATN[s.c]} · ${PHY[yi.p]} · ${s.lon.length} ${tx('fixes')}</span></div>` +
+    MOM.map((m, j) => `<div class="exrow"><span class="o">${tx('ord')[m.o - 1]}</span><span class="n">${m.l}</span><span class="val">${m.f(s.mo[j])}</span><span class="i">${tx('exInterp', j, s.mo[j])}</span></div>`).join('');
+  const M = exMap; M.resize(); const ctx = M.ctx[1], { w, h } = M; ctx.clearRect(0, 0, w, h);
+  // marginal distributions along the bottom (longitude) and right (latitude) edges; zoom the map to the storm
+  const band = Math.max(40, h * 0.13), le = d3.extent(s.lon), ae = d3.extent(s.lat);
+  M.proj = d3.geoEquirectangular().fitExtent([[28, 28], [w - band - 28, h - band - 28]], { type: 'MultiPoint', coordinates: [[le[0] - 3, ae[0] - 3], [le[1] + 3, ae[1] + 3]] }).clipExtent([[0, 0], [w, h]]);
+  drawBase(M);
+  const xy = M.project(s), k = pxPerDeg(M), [cx, cy] = M.proj([s.mo[0], s.mo[1]]), col = C[s.p];
+  const lonG = d3.range(60).map(i => d3.min(s.lon) - 2 + i * (d3.max(s.lon) - d3.min(s.lon) + 4) / 59);
+  const latG = d3.range(60).map(i => d3.min(s.lat) - 2 + i * (d3.max(s.lat) - d3.min(s.lat) + 4) / 59);
+  const kl = kde(Array.from(s.lon), lonG), kt = kde(Array.from(s.lat), latG), ml = d3.max(kl), mt = d3.max(kt);
+  ctx.fillStyle = C.tint(.07); ctx.fillRect(0, h - band, w, band); ctx.fillRect(w - band, 0, band, h - band);
+  ctx.beginPath(); lonG.forEach((g, i) => { const X = M.proj([g, 20])[0], Y = h - 4 - kl[i] / ml * (band - 24); i ? ctx.lineTo(X, Y) : ctx.moveTo(X, Y); });
+  ctx.strokeStyle = C.ink2; ctx.lineWidth = 1.5; ctx.stroke(); ctx.lineTo(M.proj([lonG[59], 20])[0], h - 4); ctx.lineTo(M.proj([lonG[0], 20])[0], h - 4); ctx.fillStyle = C.tint(.12); ctx.fill();
+  ctx.beginPath(); latG.forEach((g, i) => { const Y = M.proj([-60, g])[1], X = w - 4 - kt[i] / mt * (band - 24); i ? ctx.lineTo(X, Y) : ctx.moveTo(X, Y); });
+  ctx.stroke(); ctx.lineTo(w - 4, M.proj([-60, latG[59]])[1]); ctx.lineTo(w - 4, M.proj([-60, latG[0]])[1]); ctx.fill();
+  ctx.font = '500 11px -apple-system, "Segoe UI", "PingFang SC", "Noto Sans SC", sans-serif'; ctx.fillStyle = C.ink2;
+  // On small maps keep the axis name; all moment values remain in the adjacent table.
+  const distributionLabel = (key, skew, kurt, available) => {
+    const full = `${tx(key)} · Skew ${fmt2(skew)} · Kurt ${fmt2(kurt)}`;
+    return ctx.measureText(full).width <= available ? full : tx(key);
+  };
+  ctx.fillText(distributionLabel('lonDist', s.mo[5], s.mo[7], w - band - 24), 12, h - band + 14);
+  ctx.save(); ctx.translate(w - band + 14, 12); ctx.rotate(Math.PI / 2); ctx.fillText(distributionLabel('latDist', s.mo[6], s.mo[8], h - band - 24), 0, 0); ctx.restore();
+  // track and its fixes (each 6-hourly fix is one unit of "mass")
+  ctx.strokeStyle = col; ctx.globalAlpha = .55; ctx.lineWidth = 1.4; ctx.lineJoin = 'round'; strokeXY(ctx, xy); ctx.globalAlpha = 1;
+  for (let i = 0; i < xy.length; i += 2) dot(ctx, xy[i], xy[i + 1], 2.2, col);
+  // covariance ellipses and centroid
+  ctx.setLineDash([4, 5]); ctx.strokeStyle = C.ink2; ctx.lineWidth = 1; covEllipse(ctx, cx, cy, s.mo[2], s.mo[3], s.mo[4], k, 2); ctx.stroke(); ctx.setLineDash([]);
+  const e = covEllipse(ctx, cx, cy, s.mo[2], s.mo[3], s.mo[4], k, 1); ctx.fillStyle = C.tint(.06); ctx.fill(); ctx.strokeStyle = C.ink; ctx.lineWidth = 1.6; ctx.stroke();
+  ctx.beginPath(); const r1 = Math.sqrt(e.l1); ctx.moveTo(cx - Math.cos(e.ang) * r1, cy - Math.sin(e.ang) * r1); ctx.lineTo(cx + Math.cos(e.ang) * r1, cy + Math.sin(e.ang) * r1);
+  ctx.strokeStyle = C.tint(.35); ctx.lineWidth = 1; ctx.stroke();
+  dot(ctx, cx, cy, 5.5, C.ink, true);
+  ctx.font = '600 12px -apple-system, "Segoe UI", "PingFang SC", "Noto Sans SC", sans-serif'; ctx.fillStyle = C.ink; ctx.strokeStyle = C.halo; ctx.lineWidth = 3;
+  const lab = (t, x, y) => { ctx.strokeText(t, x, y); ctx.fillText(t, x, y); };
+  lab(tx('exCentroid'), cx + 10, cy - 8);
+  lab(tx('exEllipse'), cx + Math.cos(e.ang + Math.PI / 2) * Math.sqrt(e.l2) + 6, cy + Math.sin(e.ang + Math.PI / 2) * Math.sqrt(e.l2) + 14);
+
+}
+
+function renderCentroids() {
+  const M = cenMap; M.resize(); const ctx = M.ctx[1], { w, h } = M; ctx.clearRect(0, 0, w, h);
+  const k = pxPerDeg(M), A = R.byPhase.nino, B = R.byPhase.nina;
+  const list = R.storms.filter(s => s.mo && (s.p === 'nino' || s.p === 'nina'));
+  cenPts = list.map(s => { const [x, y] = M.proj([s.mo[0], s.mo[1]]); return { s, x, y }; });
+  cenPts.forEach(p => { ctx.globalAlpha = .55; dot(ctx, p.x, p.y, 2.4, C[p.s.p]); }); ctx.globalAlpha = 1;
+  const mean = {};
+  ['nina', 'nino'].forEach(p => { const ys = p === 'nino' ? A : B; const m = [0, 1, 2, 3, 4].map(j => R.momStat(j, ys)); if (!m.every(isFinite)) return; mean[p] = m;
+    const [x, y] = M.proj([m[0], m[1]]);
+    covEllipse(ctx, x, y, m[2], m[3], m[4], k, 1); ctx.fillStyle = d3.color(C[p]).copy({ opacity: .1 }) + ''; ctx.fill(); ctx.strokeStyle = C[p]; ctx.lineWidth = 2; ctx.stroke(); });
+  if (mean.nina && mean.nino) {
+    const [x0, y0] = M.proj([mean.nina[0], mean.nina[1]]), [x1, y1] = M.proj([mean.nino[0], mean.nino[1]]), a = Math.atan2(y1 - y0, x1 - x0);
+    ctx.strokeStyle = C.ink; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(x0, y0); ctx.lineTo(x1 - 7 * Math.cos(a), y1 - 7 * Math.sin(a)); ctx.stroke();
+    ctx.fillStyle = C.ink; ctx.beginPath(); ctx.moveTo(x1, y1); ctx.lineTo(x1 - 10 * Math.cos(a - .45), y1 - 10 * Math.sin(a - .45)); ctx.lineTo(x1 - 10 * Math.cos(a + .45), y1 - 10 * Math.sin(a + .45)); ctx.fill();
+    dot(ctx, x0, y0, 5, C.nina, true); dot(ctx, x1, y1, 5, C.nino, true);
+    const dx = mean.nino[0] - mean.nina[0], dy = mean.nino[1] - mean.nina[1];
+    ctx.font = '600 13px -apple-system, "Segoe UI", "PingFang SC", "Noto Sans SC", sans-serif'; ctx.fillStyle = C.ink; ctx.strokeStyle = C.halo; ctx.lineWidth = 4;
+    const t = tx('cenArrow', fmt1(Math.abs(dx)), dx >= 0 ? tx('east') : tx('west'), fmt1(Math.abs(dy)), dy >= 0 ? tx('north') : tx('south'));
+    ctx.strokeText(t, x1 + 12, y1 - 12); ctx.fillText(t, x1 + 12, y1 - 12);
+  }
+  document.getElementById('cenLegend').innerHTML = `<span><span class="lg-dot" style="background:var(--nino)"></span><span class="lg-dot" style="background:var(--nina)"></span> ${tx('cenLegDots')}</span><span><span class="lg-ell"></span> ${tx('cenLegEll')}</span><span>${tx('cenLegArrow')}</span>`;
+}
+(function cenHover() {
+  const top = cenMap.cvs[2], o = cenMap.ctx[2];
+  top.addEventListener('pointermove', ev => {
+    const { x, y, ll } = pointerLL(cenMap, ev); document.getElementById('cenXY').textContent = llTxt(ll);
+    let best = null, bd = 100; for (const p of cenPts) { const d = (p.x - x) ** 2 + (p.y - y) ** 2; if (d < bd) { bd = d; best = p; } }
+    o.clearRect(0, 0, cenMap.w, cenMap.h); if (!best) { hideTip(); return; }
+    const xy = cenMap.project(best.s); o.strokeStyle = C[best.s.p]; o.lineWidth = 2; o.lineJoin = 'round'; strokeXY(o, xy); dot(o, best.x, best.y, 5, C[best.s.p], true);
+    showTip(stormTip(best.s) + `<div class="d">${tx('centroidAt')} ${latTxt(best.s.mo[1])} ${lonTxt(best.s.mo[0])}</div>`, ev);
+  });
+  top.addEventListener('pointerleave', () => { o.clearRect(0, 0, cenMap.w, cenMap.h); hideTip(); });
+})();
+
+function renderRidges() {
+  const svg = d3.select('#ridges'), W = svg.node().clientWidth || 480, narrow = W < 520;
+  document.getElementById('ridgeLeg').innerHTML = `<span><span class="lg-dot" style="background:var(--nino)"></span> ${PHY.nino}</span><span><span class="lg-dot" style="background:var(--nina)"></span> ${PHY.nina}</span><span>${tx('ridgeFoot')}</span>`;
+  let rowH = narrow ? 96 : 74;
+  const top = 6;
+  if (innerWidth > 920) {
+    // Match the neighbour's content height, spreading the four plots instead of leaving a blank card bottom.
+    const box = svg.node().parentElement, peer = box.nextElementSibling, last = peer.lastElementChild;
+    const num = (el, key) => parseFloat(getComputedStyle(el)[key]) || 0;
+    const heading = box.querySelector('h3'), legend = document.getElementById('ridgeLeg');
+    const peerHeight = last.getBoundingClientRect().bottom - peer.getBoundingClientRect().top + num(last, 'marginBottom') + num(peer, 'paddingBottom');
+    const available = peerHeight - num(box, 'paddingTop') - num(box, 'paddingBottom')
+      - heading.getBoundingClientRect().height - num(heading, 'marginBottom')
+      - legend.getBoundingClientRect().height - num(legend, 'marginTop') - top;
+    rowH = Math.max(rowH, Math.floor(available / 4));
+  }
+  const H = top + rowH * 4;
+  svg.attr('viewBox', `0 0 ${W} ${H}`).attr('height', H).selectAll('*').remove();
+  const A = R.byPhase.nino, B = R.byPhase.nina;
+  const x0 = narrow ? 0 : Math.min(110, W * 0.26), x1 = narrow ? W : W - Math.min(150, W * 0.3);
+  [5, 6, 7, 8].forEach((j, r) => {
+    const va = R.storms.filter(s => s.mo && s.p === 'nino').map(s => s.mo[j]), vb = R.storms.filter(s => s.mo && s.p === 'nina').map(s => s.mo[j]);
+    if (va.length < 3 || vb.length < 3) return;
+    const all = va.concat(vb).sort(d3.ascending);
+    // overlap coefficient on the full support, each density normalised to 1 -> symmetric in the two groups
+    const sd = d3.deviation(all) || 1, flo = all[0] - sd, fhi = all[all.length - 1] + sd;
+    const fg = d3.range(400).map(i => flo + i * (fhi - flo) / 399), ga = kde(va, fg), gb = kde(vb, fg), sa = d3.sum(ga), sb = d3.sum(gb);
+    const ovl = d3.sum(fg, (g, i) => Math.min(ga[i] / sa, gb[i] / sb));
+    // what is drawn: the central 96% of the pooled values
+    const lo = d3.quantile(all, .02), hi = d3.quantile(all, .98);
+    const grid = d3.range(80).map(i => lo + i * (hi - lo) / 79), fa = kde(va, grid), fb = kde(vb, grid);
+    const x = d3.scaleLinear().domain([lo, hi]).range([x0, x1]), base = top + rowH * (r + 1) - 12, ymax = d3.max(fa.concat(fb));
+    const y = d3.scaleLinear().domain([0, ymax]).range([base, base - rowH + (narrow ? 44 : 22)]);
+    const area = f => d3.area().x((d, i) => x(grid[i])).y0(base).y1((d, i) => y(f[i])).curve(d3.curveBasis)(grid);
+    const line = f => d3.line().x((d, i) => x(grid[i])).y((d, i) => y(f[i])).curve(d3.curveBasis)(grid);
+    svg.append('line').attr('x1', x0).attr('x2', x1).attr('y1', base).attr('y2', base).attr('stroke', C.line2);
+    [['nina', fb], ['nino', fa]].forEach(([p, f]) => { svg.append('path').attr('d', area(f)).attr('fill', C[p]).attr('opacity', .18); svg.append('path').attr('d', line(f)).attr('fill', 'none').attr('stroke', C[p]).attr('stroke-width', 1.6); });
+    [['nino', d3.mean(va)], ['nina', d3.mean(vb)]].forEach(([p, m]) => svg.append('line').attr('x1', x(m)).attr('x2', x(m)).attr('y1', base + 1).attr('y2', y(ymax) + 2).attr('stroke', C[p]).attr('stroke-width', 1.5).attr('stroke-dasharray', '3 3'));
+    const p = permFn(ys => R.momStat(j, ys), A, B);
+    const ly1 = narrow ? base - rowH + 26 : base - 22, ly2 = narrow ? base - rowH + 41 : base - 6;
+    svg.append('text').attr('x', 0).attr('y', ly1).attr('fill', C.ink).attr('font-size', 13).attr('font-weight', 600).text(MOM[j].l);
+    svg.append('text').attr('x', 0).attr('y', ly2).attr('fill', C.muted).attr('font-size', 11.5).text(MOM[j].s);
+    svg.append('text').attr('x', W).attr('y', ly1).attr('text-anchor', 'end').attr('fill', C.ink).attr('font-size', 13).attr('font-weight', 600).text(tx('overlap', fmt0(ovl * 100)));
+    svg.append('text').attr('x', W).attr('y', ly2).attr('text-anchor', 'end').attr('fill', C.muted).attr('font-size', 11.5).text(tx('meanDiff', pTxt(p)));
+  });
+}
+
+function renderMomTable() {
+  const A = R.byPhase.nino, B = R.byPhase.nina;
+  const rows = MOM.map((m, j) => { const a = R.momStat(j, A), b = R.momStat(j, B), p = permFn(ys => R.momStat(j, ys), A, B);
+    return `<tr><td>${tx('ord')[m.o - 1]}</td><td>${m.l} <span class="mut">${m.s}</span></td><td style="color:var(--nino)">${m.f(a)}</td><td style="color:var(--nina)">${m.f(b)}</td><td class="${p < 0.05 ? 'sigc' : 'mut'}">${pTxt(p)}</td></tr>`; }).join('');
+  document.getElementById('momTable').innerHTML = `<table><thead><tr><th>${tx('thOrder')}</th><th>${tx('thMoment')}</th><th>${PHY.nino}</th><th>${PHY.nina}</th><th>p</th></tr></thead><tbody>${rows}</tbody></table>`;
+}
+
+function renderS3() { const g = ML.gain, h = ML.sets.higher; document.getElementById('s3P').innerHTML = tx('s3P', h.auc.toFixed(2), h.null_mean.toFixed(2), g.auc12.toFixed(2), g.auc9.toFixed(2), ML.seasons, (g.ci_lo > 0 ? '+' : '') + g.ci_lo.toFixed(3), '+' + g.ci_hi.toFixed(3)); }
+function renderFingerprint() { renderS3(); renderTypeShift(); renderConclusion(); renderVerdicts(); renderExChips(); renderExample(); renderCentroids(); renderRidges(); renderMomTable(); }
+
+function renderCoin() {
+  // per-set null range (5-95% of AUC with season labels shuffled between years) and observed mean AUC, from analyze.py
+  const keys = ['higher', 'genesis', 'm12', 'm1', 'track', 'all9'], rows = keys.map((k, i) => ({ n: tx('coinSets')[i], ...ML.sets[k] }));
+  document.getElementById('coinBest').textContent = ML.sets.all9.auc.toFixed(2);
+  const svg = d3.select('#coin'), W = svg.node().clientWidth || 400, narrow = W < 360, rowH = narrow ? 46 : 22, top = 8, H = top + rows.length * rowH + 30;
+  svg.attr('viewBox', `0 0 ${W} ${H}`).attr('height', H).selectAll('*').remove();
+  const labW = narrow ? 8 : Math.min(170, W * 0.42), x = d3.scaleLinear().domain([0.4, 0.75]).range([labW, W - 10]), base = top + rows.length * rowH + 4;
+  [0.4, 0.5, 0.6, 0.7].forEach(t => {
+    svg.append('line').attr('x1', x(t)).attr('x2', x(t)).attr('y1', narrow ? base - 4 : top - 4).attr('y2', base).attr('stroke', t === 0.5 ? C.line2 : C.line);
+    svg.append('text').attr('x', x(t)).attr('y', base + 16).attr('text-anchor', 'middle').attr('fill', C.muted).attr('font-size', 10.5).text(t.toFixed(1)); });
+  rows.forEach((r, i) => { const rowTop = top + i * rowH, y = rowTop + (narrow ? 31 : rowH / 2);
+    svg.append('rect').attr('x', x(r.null_lo)).attr('width', Math.max(2, x(r.null_hi) - x(r.null_lo))).attr('y', y - 5).attr('height', 10).attr('rx', 5).attr('fill', C.ink).attr('opacity', .12);
+    svg.append('line').attr('x1', x(r.null_mean)).attr('x2', x(r.null_mean)).attr('y1', y - 5).attr('y2', y + 5).attr('stroke', C.ink2).attr('stroke-width', 1).attr('opacity', .7);
+    svg.append('circle').attr('cx', x(r.auc)).attr('cy', y).attr('r', 5).attr('fill', r.auc > r.null_hi ? C.ink : 'none').attr('stroke', C.ink).attr('stroke-width', 1.5);
+    svg.append('text').attr('x', 0).attr('y', narrow ? rowTop + 12 : y + 4).attr('fill', C.ink2).attr('font-size', 11.5).text(r.n);
+    svg.append('text').attr('x', x(r.auc) + 9).attr('y', y + 4).attr('fill', C.ink).attr('font-size', 11).text(r.auc.toFixed(2));
+    svg.append('rect').attr('x', 0).attr('width', W).attr('y', rowTop).attr('height', rowH).attr('fill', 'transparent')
+      .on('pointermove', ev => showTip(`<div class="t">${r.n}</div><div class="d">AUC ${r.auc.toFixed(3)}</div><div class="d">${tx('nullTip', r.null_mean.toFixed(3), r.null_lo.toFixed(3), r.null_hi.toFixed(3))}</div><div class="d">p = ${r.p.toFixed(3)}</div>`, ev)).on('pointerleave', hideTip);
+  });
+  document.getElementById('coinLeg').innerHTML = `<span><span class="lg-bar"></span> ${tx('coinLegBand')}</span><span><span class="lg-o filled"></span> ${tx('coinLegAbove')}</span><span><span class="lg-o"></span> ${tx('coinLegIn')}</span>`;
+}
+
+// =================== ENSO CALENDAR ===================
+function oniOf2026() { const r = D.oni.filter(o => o[0] === 2026); return r.length ? r[r.length - 1] : null; }
+function renderCalendar() {
+  const svg = d3.select('#cal'), W = svg.node().clientWidth || 900, narrow = W < 560;
+  const labW = narrow ? 30 : 52, gap = narrow ? 2 : 4, cw = (W - labW) / 10 - gap, ch = narrow ? 30 : 48, rows = 8, H = rows * (ch + gap);
+  svg.attr('viewBox', `0 0 ${W} ${H}`).attr('height', H).selectAll('*').remove();
+  const cells = D.years.map(d => ({ y: d.y, oni: d.oni, p: d.p }));
+  const now = oniOf2026(); if (now) cells.push({ y: 2026, oni: now[2], p: now[2] >= 0.5 ? 'nino' : now[2] <= -0.5 ? 'nina' : 'neutral', live: true, seas: now[1] });
+  for (let r = 0; r < rows; r++) svg.append('text').attr('x', 0).attr('y', r * (ch + gap) + ch / 2 + 4).attr('fill', C.muted).attr('font-size', narrow ? 10 : 12).text(narrow ? `'${String(1950 + r * 10).slice(2)}` : `${1950 + r * 10}s`);
+  cells.forEach(c => {
+    const col = c.y % 10, row = Math.floor((c.y - 1950) / 10), x = labW + col * (cw + gap), y = row * (ch + gap);
+    const strength = c.p === 'neutral' ? 0.16 : 0.32 + 0.68 * Math.min(1, (Math.abs(c.oni) - 0.5) / 1.5);
+    const out = c.y < state.y0 && !c.live, g = svg.append('g').style('cursor', c.live ? 'default' : 'pointer').attr('opacity', out ? 0.3 : 1);
+    g.append('rect').attr('x', x).attr('y', y).attr('width', cw).attr('height', ch).attr('rx', narrow ? 4 : 8)
+      .attr('fill', C[c.p]).attr('fill-opacity', c.live ? strength * 0.5 : strength)
+      .attr('stroke', c.live ? C[c.p] : 'none').attr('stroke-dasharray', c.live ? '4 3' : null).attr('stroke-width', 1.5);
+    const ink = strength > 0.6 ? (document.documentElement.dataset.theme === 'light' ? '#fff' : '#000') : C.ink;
+    if (cw >= 58) {
+      g.append('text').attr('x', x + 9).attr('y', y + 19).attr('fill', ink).attr('font-size', 12.5).attr('font-weight', 600).text(c.y + (c.live ? '*' : ''));
+      g.append('text').attr('x', x + 9).attr('y', y + 36).attr('fill', ink).attr('opacity', .8).attr('font-size', 11).text((c.oni > 0 ? '+' : '') + c.oni.toFixed(1));
+    } else if (cw >= 22) {
+      g.append('text').attr('x', x + cw / 2).attr('y', y + ch / 2 + 4).attr('text-anchor', 'middle').attr('fill', ink).attr('font-size', 10).attr('font-weight', 600).text(String(c.y).slice(2));
+    }
+    g.on('pointermove', ev => { const a = R.per[c.y];
+        showTip(`<div class="t">${c.y} · ${PHN[c.p]}</div><div class="d">${c.live ? tx('calLive', c.seas) : 'ASO'} ONI ${c.oni > 0 ? '+' : ''}${c.oni.toFixed(2)} °C</div>` +
+          (c.live ? `<div class="d">${tx('calLiveNote')}</div>` : `<div class="d">${a ? tx('swStorms', a.n, fmt0(a.ace)) : tx('outside')}</div><div class="d">${tx('clickReplay')}</div>`), ev); })
+      .on('pointerleave', hideTip);
+    if (!c.live) g.on('click', () => { replaySet(c.y, true); scrollToReplay(); });
+  });
+  const n = p => R.yrs.filter(d => d.p === p).length;
+  document.getElementById('calCount').innerHTML = ['nino', 'neutral', 'nina'].map(p => `<div class="ccount"><span class="n" style="color:var(--${p})">${n(p)}</span><span class="l">${tx('calCountL', PHN[p])}</span></div>`).join('') +
+    `<div class="ccount"><span class="n">${R.yrs.length}</span><span class="l">${tx('calTotal', state.y0)}</span></div>`;
+  document.getElementById('calLeg').innerHTML = ['nino', 'neutral', 'nina'].map(p => `<span><span class="lg-sq" style="background:var(--${p})"></span> ${PHN[p]}</span>`).join('') + `<span>${tx('calLegStrength')}</span><span>${tx('calLegLive')}</span>`;
+}
+
+// =================== SAFFIR-SIMPSON SCALE ===================
+function renderCatScale() {
+  const svg = d3.select('#catScale'), W = svg.node().clientWidth || 900, narrow = W < 560;
+  const top = 34, barMax = narrow ? 90 : 120, bandH = narrow ? 40 : 52, H = top + barMax + 14 + bandH + 50;
+  svg.attr('viewBox', `0 0 ${W} ${H}`).attr('height', H).selectAll('*').remove();
+  const x = d3.scaleLinear().domain([20, 175]).range([narrow ? 34 : 50, W - 6]);
+  const segs = [[20, 34, -1], [34, 64, 0], [64, 83, 1], [83, 96, 2], [96, 113, 3], [113, 137, 4], [137, 175, 5]];
+  const count = [0, 0, 0, 0, 0, 0]; D.storms.forEach(s => { if (s.y >= state.y0) count[s.c]++; });
+  const cmax = d3.max(count) || 1, bandY = top + barMax + 14;
+  // major-hurricane bracket
+  svg.append('path').attr('d', `M${x(96) + 2},${top - 8} V${top - 16} H${x(175) - 2} V${top - 8}`).attr('fill', 'none').attr('stroke', C.ink2).attr('stroke-width', 1);
+  svg.append('text').attr('x', (x(96) + x(175)) / 2).attr('y', top - 21).attr('text-anchor', 'middle').attr('fill', C.ink2).attr('font-size', narrow ? 10.5 : 12).text(tx('catMajor'));
+  segs.forEach(([a, b, c]) => {
+    const col = c < 0 ? C.tint(.12) : C.cat[c], w = x(b) - x(a);
+    const g = svg.append('g');
+    g.append('rect').attr('x', x(a) + 1).attr('y', bandY).attr('width', w - 2).attr('height', bandH).attr('rx', 6).attr('fill', col);
+    const lab = c < 0 ? 'TD' : c === 0 ? 'TS' : String(c);
+    g.append('text').attr('x', x(a) + w / 2).attr('y', bandY + bandH / 2 + (c > 0 ? 9 : 5)).attr('text-anchor', 'middle').attr('fill', c < 0 ? C.ink2 : '#000')
+      .attr('font-size', c > 0 ? (narrow ? 22 : 30) : (narrow ? 11 : 14)).attr('font-weight', 700).text(lab);
+    if (c >= 0) {
+      const h = count[c] / cmax * barMax, bw = Math.min(w * 0.56, 46);
+      g.append('rect').attr('x', x(a) + w / 2 - bw / 2).attr('y', top + barMax - h).attr('width', bw).attr('height', Math.max(h, 1)).attr('rx', 4).attr('fill', col).attr('opacity', .85);
+      g.append('text').attr('x', x(a) + w / 2).attr('y', top + barMax - h - 6).attr('text-anchor', 'middle').attr('fill', C.ink).attr('font-size', narrow ? 11 : 13).attr('font-weight', 600).text(count[c]);
+    }
+    g.append('rect').attr('x', x(a)).attr('y', 0).attr('width', w).attr('height', H).attr('fill', 'transparent')
+      .on('pointermove', ev => showTip(`<div class="t">${c < 0 ? tx('tdName') : CATN[c]}</div><div class="d">${c < 0 ? `< 34 kt · < 63 km/h` : `${c === 5 ? '≥' + a : a + '–' + (b - 1)} kt · ${Math.round(a * 1.852)}${c === 5 ? '+' : '–' + Math.round((b - 1) * 1.852)} km/h`}</div><div class="d">${tx('catDamage')[c + 1]}</div>${c >= 0 ? `<div class="d">${tx('catCount', count[c], state.y0)}</div>` : ''}`, ev))
+      .on('pointerleave', hideTip);
+  });
+  const ty = bandY + bandH + 18;
+  [34, 64, 83, 96, 113, 137].forEach(v => {
+    svg.append('line').attr('x1', x(v)).attr('x2', x(v)).attr('y1', bandY + bandH + 2).attr('y2', bandY + bandH + 6).attr('stroke', C.ink2);
+    svg.append('text').attr('x', x(v)).attr('y', ty).attr('text-anchor', 'middle').attr('fill', C.ink).attr('font-size', narrow ? 10.5 : 12).attr('font-weight', 600).text(v);
+    svg.append('text').attr('x', x(v)).attr('y', ty + 16).attr('text-anchor', 'middle').attr('fill', C.muted).attr('font-size', narrow ? 9.5 : 11).text(Math.round(v * 1.852));
+  });
+  svg.append('text').attr('x', 0).attr('y', ty).attr('fill', C.ink2).attr('font-size', narrow ? 10 : 11.5).text('kt');
+  svg.append('text').attr('x', 0).attr('y', ty + 16).attr('fill', C.muted).attr('font-size', narrow ? 9.5 : 11).text('km/h');
+  svg.append('text').attr('x', 0).attr('y', 12).attr('fill', C.muted).attr('font-size', narrow ? 10 : 11.5).text(tx('catBars', state.y0));
+}
+
+// =================== STEP 4: TYPE MIX vs WITHIN TYPE ===================
+const tsMap = makeMap(document.getElementById('typeShiftMap'));
+function splitShift(storms, v, ph = s => s.p) {
+  const nino = storms.filter(s => ph(s) === 'nino'), nina = storms.filter(s => ph(s) === 'nina');
+  const m = (l, f) => l.length ? d3.mean(l, f) : NaN, tot = m(nino, v) - m(nina, v);
+  let mix = 0, within = 0;
+  for (let k = 0; k < 4; k++) {
+    const a = nino.filter(s => s.k === k), b = nina.filter(s => s.k === k); if (!a.length || !b.length) continue;
+    const pn = a.length / nino.length, pl = b.length / nina.length, mn = m(a, v), ml = m(b, v);
+    mix += (pn - pl) * (mn + ml) / 2; within += (pn + pl) / 2 * (mn - ml);
+  }
+  return [tot, mix, within];
+}
+const shiftCache = new Map();
+function renderTypeShift() {
+  const list = R.storms.filter(s => s.mo && (s.p === 'nino' || s.p === 'nina'));
+  // map: each type's La Nina -> El Nino centroid
+  const M = tsMap; M.resize(); const ctx = M.ctx[1], { w, h } = M; ctx.clearRect(0, 0, w, h);
+  M.proj = d3.geoEquirectangular().fitExtent([[16, 16], [w - 16, h - 16]], { type: 'MultiPoint', coordinates: [[-100, 8], [-28, 46]] }).clipExtent([[0, 0], [w, h]]); drawBase(M); const k = pxPerDeg(M);
+  for (let t = 0; t < 4; t++) {
+    const c = {};
+    ['nina', 'nino'].forEach(p => { const l = list.filter(s => s.k === t && s.p === p); if (l.length < 3) return;
+      c[p] = [0, 1, 2, 3, 4].map(j => d3.mean(l, s => s.mo[j])); const [x, y] = M.proj([c[p][0], c[p][1]]);
+      covEllipse(ctx, x, y, c[p][2], c[p][3], c[p][4], k, 1); ctx.strokeStyle = d3.color(C[p]).copy({ opacity: .45 }) + ''; ctx.lineWidth = 1; ctx.stroke(); });
+    if (!c.nina || !c.nino) continue;
+    const [x0, y0] = M.proj([c.nina[0], c.nina[1]]), [x1, y1] = M.proj([c.nino[0], c.nino[1]]), a = Math.atan2(y1 - y0, x1 - x0);
+    ctx.strokeStyle = C.ink; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(x0, y0); ctx.lineTo(x1, y1); ctx.stroke();
+    dot(ctx, x0, y0, 5, C.nina, true); dot(ctx, x1, y1, 5, C.nino, true);
+    ctx.font = '600 12px -apple-system, "Segoe UI", "PingFang SC", "Noto Sans SC", sans-serif'; ctx.fillStyle = C.ink; ctx.strokeStyle = C.halo; ctx.lineWidth = 3;
+    const below = t === 0 || t === 3, lx = (x0 + x1) / 2, ly = below ? Math.max(y0, y1) + 24 : Math.min(y0, y1) - 26;
+    ctx.textAlign = 'center'; ctx.strokeText(TYPES[t].name, lx, ly); ctx.fillText(TYPES[t].name, lx, ly);
+    ctx.font = '500 11.5px -apple-system, "Segoe UI", "PingFang SC", "Noto Sans SC", sans-serif'; const s2 = tx('dNorth', fmt1(c.nino[1] - c.nina[1]));
+    ctx.strokeText(s2, lx, ly + 15); ctx.fillText(s2, lx, ly + 15); ctx.textAlign = 'left';
+  }
+  // Reuse the published result at its reference filters; cache other season-level tests.
+  const cacheKey = `${state.y0}:${state.cat}`;
+  if (!shiftCache.has(cacheKey)) {
+    const obs = {}, pvals = {};
+    if (state.y0 === DEC.y0 && state.cat === 0) {
+      for (const key of ['lon', 'lat']) {
+        const d = DEC.main[key]; obs[key] = [d.total, d.mix, d.within]; pvals[key] = [d.p_total, d.p_mix, d.p_within];
+      }
+    } else {
+      const yrs = [...new Set(list.map(s => s.y))].sort(), labs = yrs.map(y => yearInfo[y].p), r = rng(42), NP = 400;
+      const hit = { lon: [0, 0, 0], lat: [0, 0, 0] };
+      obs.lon = splitShift(list, s => s.mo[0]); obs.lat = splitShift(list, s => s.mo[1]);
+      for (let i = 0; i < NP; i++) {
+        const pl = labs.slice(); for (let j = pl.length - 1; j > 0; j--) { const q = Math.floor(r() * (j + 1)); [pl[j], pl[q]] = [pl[q], pl[j]]; }
+        const map = new Map(yrs.map((y, j) => [y, pl[j]])), ph = s => map.get(s.y);
+        for (const [key, f] of [['lon', s => s.mo[0]], ['lat', s => s.mo[1]]]) { const v = splitShift(list, f, ph); for (let j = 0; j < 3; j++) if (Math.abs(v[j]) >= Math.abs(obs[key][j]) - 1e-12) hit[key][j]++; }
+      }
+      for (const key of ['lon', 'lat']) pvals[key] = hit[key].map(h => (h + 1) / (NP + 1));
+    }
+    shiftCache.set(cacheKey, { obs, pvals });
+  }
+  const { obs, pvals } = shiftCache.get(cacheKey);
+  const svg = d3.select('#decSvg'), W = svg.node().clientWidth || 420, narrow = W < 360;
+  const rowH = narrow ? 50 : 30, headH = narrow ? 48 : 30, groupH = headH + 2 * rowH + 12, H = 2 * groupH;
+  svg.attr('viewBox', `0 0 ${W} ${H}`).attr('height', H).selectAll('*').remove();
+  const values = ['lon', 'lat'].flatMap(key => obs[key]), lo = Math.min(0, ...values), hi = Math.max(1, ...values);
+  const x = d3.scaleLinear().domain([lo, hi]).range(narrow ? [4, W - 4] : [110, W - 120]);
+  ['lon', 'lat'].forEach((key, i) => {
+    const y0 = i * groupH, [tot] = obs[key], ps = pvals[key];
+    const heading = tx(key === 'lon' ? 'decLon' : 'decLat', fmt1(Math.abs(tot)), tot >= 0 ? tx(key === 'lon' ? 'east' : 'north') : tx(key === 'lon' ? 'west' : 'south'));
+    svg.append('text').attr('x', 0).attr('y', y0 + 16).attr('fill', C.ink).attr('font-size', 14).attr('font-weight', 600).text(heading + (narrow ? '' : ` · ${pTxt(ps[0])}`));
+    if (narrow) svg.append('text').attr('x', 0).attr('y', y0 + 34).attr('fill', C.ink2).attr('font-size', 12).text(pTxt(ps[0]));
+    [[1, tx('decMix'), C.ink], [2, tx('decWithin'), C.neutral]].forEach(([j, name, col], r2) => {
+      const yy = y0 + headH + r2 * rowH, v = obs[key][j], sig = ps[j] < 0.05, barY = yy + (narrow ? 26 : 4);
+      svg.append('text').attr('x', 0).attr('y', yy + 15).attr('fill', C.ink2).attr('font-size', 12.5).text(name);
+      svg.append('rect').attr('x', Math.min(x(0), x(v))).attr('y', barY).attr('width', Math.max(2, Math.abs(x(v) - x(0)))).attr('height', 14).attr('rx', 4).attr('fill', col).attr('opacity', sig ? 1 : 0.35);
+      svg.append('text').attr('x', narrow ? W - 2 : Math.max(x(0), x(v)) + 8).attr('text-anchor', narrow ? 'end' : 'start').attr('y', yy + 15).attr('fill', sig ? C.ink : C.muted).attr('font-size', 12).attr('font-weight', sig ? 600 : 400).text(`${v >= 0 ? '+' : '−'}${fmt1(Math.abs(v))}° · ${pTxt(ps[j])}`);
+      if (narrow) svg.append('line').attr('x1', x(0)).attr('x2', x(0)).attr('y1', barY - 2).attr('y2', barY + 16).attr('stroke', C.line2);
+    });
+    if (!narrow) svg.append('line').attr('x1', x(0)).attr('x2', x(0)).attr('y1', y0 + headH - 2).attr('y2', y0 + headH + 2 * rowH).attr('stroke', C.line2);
+  });
+  // robustness table (fixed, from decompose.py)
+  const row = (lab, d, cls) => `<tr class="${cls || ''}"><td>${lab}</td><td><b>+${d.lon.mix.toFixed(1)}°</b><span class="sm mut">${pTxt(d.lon.p_mix)}</span></td><td><b class="${d.lat.p_within < 0.05 ? '' : 'mut'}">+${d.lat.within.toFixed(1)}°</b><span class="sm mut">${pTxt(d.lat.p_within)}</span></td></tr>`;
+  document.getElementById('robTable').innerHTML = `<table><thead><tr><th>${tx('robK')}</th><th>${tx('robEast')}</th><th>${tx('robNorth')}</th></tr></thead><tbody>` +
+    DEC.robust.map(d => row(`K = ${d.K}`, d, d.K === 4 ? 'cur' : '')).join('') + row(tx('robDetr'), DEC.detrended) + '</tbody></table>';
+}
+function renderConclusion() {
+  const m = DEC.main;
+  document.getElementById('conclP').innerHTML = tx('concl', fmt1(m.lon.total), fmt1(m.lat.total), fmt1(m.lon.mix), fmt1(m.lat.within), ML.seasons, ML.sets.all9.auc.toFixed(2));
+}
+
+// =================== wiring ===================
+function renderAll() {
+  readColors(); R = compute();
+  document.querySelector('[data-i="mLimitsList"] > li').textContent = tx('phaseSampleSize', state.y0, R.yrs[R.yrs.length - 1].y, R.byPhase.nina.length, R.byPhase.nino.length);
+  document.getElementById('kcount').textContent = tx('kcount', state.y0, R.storms.length);
+  renderSwarm(); renderHud(); renderHeroStatic(); renderCalendar(); renderDuel(); renderCatScale(); renderWipe(); refreshReplay(); renderTypes(); renderCoin(); renderFingerprint();
+}
+document.querySelectorAll('input[name=period]').forEach(el => el.addEventListener('change', () => { state.y0 = +el.value; renderAll(); }));
+document.querySelectorAll('input[name=cat]').forEach(el => el.addEventListener('change', () => { state.cat = +el.value; renderAll(); }));
+const chk = document.querySelector('input[name=period]:checked'); if (chk) state.y0 = +chk.value;
+const chc = document.querySelector('input[name=cat]:checked'); if (chc) state.cat = +chc.value;
+function syncLang() {
+  Object.assign(PHN, tx('phn')); Object.assign(PHY, tx('phy')); CATN.splice(0, CATN.length, ...tx('catn'));
+  tx('types').forEach((x, i) => Object.assign(TYPES[i], x)); tx('mom').forEach((x, i) => Object.assign(MOM[i], x));
+  document.documentElement.lang = lang === 'zh' ? 'zh-CN' : 'en'; document.title = tx('docTitle');
+  document.querySelectorAll('[data-i]').forEach(el => { el.innerHTML = tx(el.dataset.i); });
+  document.querySelectorAll('[data-it]').forEach(el => el.title = tx(el.dataset.it));
+  document.querySelectorAll('[data-ia]').forEach(el => el.setAttribute('aria-label', tx(el.dataset.ia)));
+  const sil = document.getElementById('sil'); if (sil) sil.textContent = Object.entries(D.silhouette).map(([k, v]) => `K${k}=${v}`).join(' ');
+  document.getElementById('src').textContent = tx('src', D.source.ibtracs, D.source.oni);
+  chipsEl.querySelectorAll('.chip').forEach(b => { b.textContent = tx('presets')[PRESETS.findIndex(p => p.id === b.dataset.p)]; });
+  renderRpChips(); renderCatLegend(); setPlaying(RP.playing);
+  document.getElementById(lang === 'zh' ? 'lZH' : 'lEN').checked = true;
+  document.getElementById(document.documentElement.dataset.theme === 'light' ? 'tLight' : 'tDark').checked = true;
+  document.getElementById('mWipe').classList.toggle('on', state.mode === 'wipe'); document.getElementById('mDiff').classList.toggle('on', state.mode === 'diff');
+}
+document.querySelectorAll('input[name=lang]').forEach(el => el.addEventListener('change', () => {
+  lang = el.value; try { localStorage.setItem('enso-atlas-lang', lang); } catch (e) {}
+  syncLang(); renderAll(); markChips();
+}));
+document.querySelectorAll('input[name=theme]').forEach(el => el.addEventListener('change', () => {
+  document.documentElement.dataset.theme = el.value;
+  try { localStorage.setItem('enso-atlas-theme', el.value); } catch (e) {}
+  hideTip(); spriteCache.clear(); dotCache.clear();
+  renderAll(); maps.forEach(drawBase); renderCatLegend(); markChips();
+}));
+syncLang();
+renderAll(); markChips();
+let rz = 0, lastW = innerWidth;
+addEventListener('resize', () => { if (innerWidth === lastW) return; lastW = innerWidth; cancelAnimationFrame(rz); rz = requestAnimationFrame(() => { dotCache.clear(); renderSwarm(); renderHeroStatic(); drawWipe(); renderCalendar(); renderCatScale(); refreshReplay(); renderTypes(); renderCoin(); renderFingerprint(); }); });
+// Observe the container, so the bitmap and geographic projection follow its final grid height.
+let panelResizeFrame = 0;
+const panelResize = new ResizeObserver(() => {
+  cancelAnimationFrame(panelResizeFrame);
+  panelResizeFrame = requestAnimationFrame(() => {
+    for (const [M, redraw] of [[hero, renderHeroStatic], [exMap, renderExample], [rp, refreshReplay]]) {
+      if (Math.abs(M.el.clientWidth - M.w) > 0.5 || Math.abs(M.el.clientHeight - M.h) > 0.5) redraw();
+    }
+  });
+});
+[hero, exMap, rp].forEach(M => panelResize.observe(M.el));
+if (document.fonts && document.fonts.ready) document.fonts.ready.then(() => { renderExample(); renderCentroids(); renderRidges(); drawReplay(); });
+})();
+</script>
