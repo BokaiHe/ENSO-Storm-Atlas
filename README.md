@@ -1,82 +1,110 @@
+<div align="center">
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="assets/readme/hero-dark.gif">
+  <source media="(prefers-color-scheme: light)" srcset="assets/readme/hero-light.gif">
+  <img src="assets/readme/hero-dark.gif" width="100%" alt="Every North Atlantic storm, replayed for all seasons, then La Niña seasons, then El Niño seasons">
+</picture>
+
 # ENSO Storm Atlas
 
-An interactive, bilingual (English / 中文) website on how El Niño and La Niña reshape North Atlantic hurricanes, 1950–2025. It is a redesign and correction of [sarika-debruyn/hurricane-prediction-ml](https://github.com/sarika-debruyn/hurricane-prediction-ml).
+**The Pacific warms. The Atlantic quiets.**<br>
+979 North Atlantic storms (1950–2025) and what El Niño and La Niña do to them.
 
-Open `docs/index.html` in a browser. It is a single self-contained file with the data embedded. It needs an internet connection only for the d3 library and web fonts.
+[**Open the atlas →**](https://bokaihe.github.io/ENSO-Storm-Atlas/) &nbsp;·&nbsp; English / 中文 &nbsp;·&nbsp; dark / light
 
-## Interface
+<br>
 
-- English / 中文 and dark / light themes, with preferences saved in the browser.
-- Translucent section backgrounds, aligned chart panels, and emphasis on key results and uncertainty.
-- Responsive desktop and mobile layouts, touch controls, season replay, and reduced-motion support.
+| Named storms / yr | Energy (ACE) / yr | US landfalls / yr | Track centroid |
+|:---:|:---:|:---:|:---:|
+| **16.1** La Niña<br>**11.0** El Niño | **129** vs **81** | **4.3** vs **2.3** | El Niño: **6.7° east**, **2.2° north** |
 
-The final browser review covered 320–1440 px viewports, both languages and themes, desktop interactions, and simulated mobile touch. It checked filters, chart labels, panel alignment, replay controls, state persistence, and browser errors. Mobile coverage uses Chromium device emulation; it is not a physical-device compatibility certification.
+<sub>1966–2025 · pairs: La Niña vs El Niño; centroid: El Niño minus La Niña · whole-season permutation tests: all listed contrasts p < 0.05</sub>
 
-## Publish on GitHub Pages
+</div>
 
-The checked-in `docs/index.html` is ready to serve. In the repository's **Settings → Pages**, choose **Deploy from a branch**, select **main** and **/docs**, then save. GitHub Pages availability depends on the repository visibility and account plan.
+---
 
-For local preview, open `docs/index.html`, or run `python -m http.server 8000 --directory docs` from the project root and visit `http://localhost:8000`.
+### Every season at a glance
+<img src="assets/readme/calendar.png" width="100%" alt="Calendar of hurricane seasons coloured by ENSO phase">
 
-## What the page shows
+### La Niña vs El Niño
+<img src="assets/readme/duel.png" width="100%" alt="Storms, ACE, US landfalls and Gulf-type storms per year">
 
-| Section | Content |
-|---|---|
-| ONI dial | Each hurricane season is a dot placed by its Aug–Oct ONI. Drag to select seasons and the map animates every storm from them. |
-| Head to head | Storms, ACE, US landfalls and Gulf-type storms per year, La Niña vs El Niño, with permutation-test p-values. |
-| Hot zones | Track-density maps for the two phases, with a draggable comparison slider and a difference view. |
-| Season replay | Fast-forward any season from 1950 to 2025, with storms coloured by Saffir–Simpson category and a running ACE total. |
-| Four track types | A single K-Means model on resampled tracks, and how often each type occurs in each ENSO phase. |
-| Shape fingerprint | The nine track moments from the original project (centroid, variance, covariance, skewness, kurtosis), plus a test of whether one track can reveal its season type. |
+<table>
+<tr>
+<td width="50%"><b>Where the storms go</b><br><img src="assets/readme/wipe.png" alt="Track density, El Niño vs La Niña, with a comparison slider"></td>
+<td width="50%"><b>Which storms El Niño takes away</b><br><img src="assets/readme/types.png" alt="Four track types and their yearly counts by ENSO phase"></td>
+</tr>
+</table>
 
-Main results for 1966–2025: La Niña seasons average 16.1 named storms against 11.0 in El Niño seasons (p ≈ 0.005), with 1.6× the ACE and 1.9× the US landfalls. Nearly all of the drop is in the Gulf & Caribbean track type (5.9 vs 2.3 per year).
+### Any season, fast-forwarded
+<img src="assets/readme/replay.gif" width="100%" alt="The 2020 season replayed, storms coloured by Saffir–Simpson category">
+<img src="assets/readme/scale.png" width="100%" alt="Saffir–Simpson scale with the number of storms reaching each category">
 
-## Project layout
+### What actually moves
+<img src="assets/readme/decomposition.png" width="100%" alt="The El Niño centroid shift split into type mix and within-type parts">
+
+> **El Niño thins out the deep-tropical tracks and nudges the rest north.**
+> The eastward shift mainly reflects a change in *which* tracks occur. The northward shift mainly reflects changes *within* track types.
+
+---
+
+## Run it
+
+```bash
+pip install -r requirements.txt
+python scripts/download_data.py      # IBTrACS + ONI + coastlines
+python scripts/build_data.py
+python scripts/analyze.py            # ~10 min
+python scripts/decompose.py          # ~2 min
+python scripts/build_site.py         # -> docs/index.html
+```
+
+Or just open `docs/index.html`. The page embeds its data in a single HTML file; an internet connection is needed for D3 and web fonts.
+
+<details>
+<summary><b>Project layout</b></summary>
 
 ```
 scripts/
   download_data.py   fetch IBTrACS, ONI and coastline files into data/raw/
-  build_data.py      clean tracks, assign ENSO phase, compute ACE/landfall/recurvature, cluster tracks -> build/data.json
-  analyze.py         statistics quoted on the page (permutation tests, moments, classification AUC)
-                     -> build/analysis.txt and build/ml_results.json (needed by build_site.py)
-  decompose.py       split the El Niño centroid shift into type mix vs within-type parts, K = 3..7
-                     -> build/decomp.json (needed by build_site.py)
-  build_site.py      embed data into site/template.html -> docs/index.html
-site/template.html   page source: HTML, CSS, JS and both languages
-docs/index.html      the built website (GitHub Pages can serve this folder)
-data/raw/            downloaded inputs (git-ignored)
-build/               intermediate data.json, analysis.txt, and artifact.html (the same page
-                     without the <html> wrapper, used to publish the claude.ai version); git-ignored
+  build_data.py      clean tracks, ENSO phase, ACE / landfall / recurvature, track clusters -> build/data.json
+  analyze.py         permutation tests, moments, classification AUC -> build/ml_results.json
+  decompose.py       type mix vs within-type split of the centroid shift, K = 3..7 -> build/decomp.json
+  build_site.py      embed everything into site/template.html -> docs/index.html
+  readme_media.mjs   render the GIFs and screenshots in assets/readme (Node ≥ 22, Chrome, ffmpeg)
+site/template.html   page source: HTML, CSS, JS, English + 中文
+docs/index.html      the built site (GitHub Pages serves this folder)
+assets/readme/       README media
 ```
 
-## Rebuild from scratch
+To publish: **Settings → Pages → Deploy from a branch → `main` / `docs`**.
+</details>
 
-```bash
-pip install -r requirements.txt
-python scripts/download_data.py
-python scripts/build_data.py
-python scripts/analyze.py     # ~10 minutes; writes build/ml_results.json
-python scripts/decompose.py   # ~2 minutes; writes build/decomp.json
-python scripts/build_site.py
-```
+<details>
+<summary><b>Data & methods</b></summary>
 
-`analyze.py` prints the statistics behind the page and writes the classification results that the page embeds, so run it before `build_site.py`. To refresh the data later, for example once the 2026 season ends, run `download_data.py --force`, raise `Y1` in `build_data.py`, and rebuild.
+- **Tracks:** IBTrACS v04r01 North Atlantic. The analysis uses `main` tracks at 00/06/12/18 UTC fixes, with `USA_WIND` (1-min sustained, kt). It includes every storm with at least one tropical or subtropical fix ≥ 34 kt: 979 storms, 1950–2025.
+- **ENSO phase:** NOAA CPC ONI for the August–October season. El Niño is ONI ≥ +0.5 and La Niña is ONI ≤ −0.5. The analysis uses one definition throughout.
+- **Significance:** permutation tests that shuffle labels between whole seasons, so storms from the same year are never treated as independent samples.
+- **Track types:** each track is resampled to 16 points and clustered with a single K-Means model. K = 4 has the best silhouette score for K = 3–7.
+- **Type mix vs within type:** the El Niño − La Niña centroid difference is split into two parts, each weighted by the average of the two phases. The 6.7° eastward shift is almost all type mix (5.8°, p = 0.002 at K = 4); type mix remains the dominant component for every K = 3–7. The 2.2° northward shift is mostly within type (1.6°, p = 0.005). That holds for K = 4–7 and after detrending, but not at K = 3.
+- **Single-track classification:** logistic regression with balanced class weights, averaged over the same 10 random season-grouped 10-fold splits. Each feature set is compared with its own shuffled-season null. All nine moments reach AUC 0.63, against a null 5–95% range of 0.41–0.57. The signal is real but weak.
+- **Skewness & kurtosis:** adding them to the 1st and 2nd moments raises AUC by 0.02. The season-bootstrap 95% interval for that gain is −0.045 to +0.083, so the gain is not established.
+- **Limitations:** the samples are small. For 1966–2025 there are 14 La Niña and 15 El Niño seasons. Pre-1966 records miss some short-lived storms. AMO and long-term warming are not controlled. All results are correlations.
+</details>
 
-## Data and methods
+<details>
+<summary><b>What was fixed from the original notebook</b></summary>
 
-- **Tracks:** IBTrACS v04r01 North Atlantic. Uses `main` tracks at 00/06/12/18 UTC fixes and `USA_WIND` (1-minute sustained wind, kt). A storm is included if it has at least one tropical or subtropical fix of 34 kt or more, which gives 979 storms for 1950–2025.
-- **ENSO phase:** NOAA CPC ONI for each year's ASO season. El Niño is ONI ≥ +0.5 and La Niña is ONI ≤ −0.5. This one definition is used throughout.
-- **Significance:** permutation tests that shuffle whole seasons (4,000 shuffles, fixed seed), so storms from the same year are never treated as independent.
-- **Track types:** each track is resampled to 16 points along its length and clustered with one K-Means model. K = 4 has the best silhouette score for K = 3–7.
-- **Single-track classification:** El Niño and La Niña storms (1966–2025: 29 seasons, 391 storms) are classified with logistic regression using balanced class weights. Without the weights, leaving whole years out shifts the class mix and pushes a no-information model to AUC ≈ 0.35. Each score is the mean over the same 10 random season-grouped 10-fold splits. It is compared with that feature set's own null, built by shuffling season labels between years 100 times on the same splits. All nine moments score AUC 0.625 against a null 5–95% range of 0.41–0.57. Every feature set sits above its null (p ≤ 0.04). This signal is weak, but it is real.
-- **Type mix vs within type:** the El Niño − La Niña difference in mean track centroid is split into two parts, one from a change in which track types occur and one from tracks of the same type running elsewhere. The split uses two components with averaged weights, and p-values come from 1,000 shuffles of season labels between years. For 1966–2025 the 6.7° eastward shift is almost all type mix (5.8°, p = 0.002) at every K from 3 to 7. The 2.2° northward shift is mostly within type (1.6°, p = 0.005). That holds for K = 4–7 and after detrending, but not at K = 3 (p = 0.14).
-- **Do skewness and kurtosis add anything?** Adding them to the 1st and 2nd moments raises AUC from 0.603 to 0.625 (+0.022). A season-level bootstrap resamples El Niño and La Niña years with replacement, keeping each year's storms together and in the same fold. Its 95% interval for the gain is −0.045 to +0.083, so the gain is not established. Repeated splits reuse the same 29 seasons, so they are not independent evidence. Results are in `build/ml_results.json`, which `build_site.py` embeds in the page.
-- **Limitations:** La Niña / El Niño sample sizes depend on the selected period: 18 / 20 seasons for 1950–2025, 14 / 15 for 1966–2025, and 10 / 12 for 1980–2025. The page displays the counts for the current period. Pre-1966 records miss some short-lived storms. The AMO and long-term warming are not controlled for. The results are correlations.
+This project is a redesign and correction of [sarika-debruyn/hurricane-prediction-ml](https://github.com/sarika-debruyn/hurricane-prediction-ml). The original notebook had these problems:
 
-## Fixes relative to the original notebook
+- Its Saffir–Simpson categorisation counted tropical depressions as Category 1 and treated missing winds as Category 5.
+- Its ENSO 5-month rule sorted months alphabetically, and it mixed three different ENSO definitions.
+- Clustering dropped track points instead of whole storms, which truncated the tracks.
+- Each phase had its own K-Means model, so clusters could not be compared across phases.
+- It ran no significance tests.
+</details>
 
-- The Saffir–Simpson categorisation counted tropical depressions as Category 1 and treated missing winds as Category 5.
-- The ENSO 5-month rule sorted months alphabetically, and three different ENSO definitions were mixed.
-- Clustering dropped track points instead of storms, which truncated the tracks.
-- Each phase had its own K-Means model, so cluster labels could not be compared across phases.
-- No significance testing was done.
+<sub>Data: [IBTrACS v04r01](https://www.ncei.noaa.gov/products/international-best-track-archive) (NOAA NCEI) · [Oceanic Niño Index](https://www.cpc.ncep.noaa.gov/data/indices/oni.ascii.txt) (NOAA CPC) · Natural Earth 1:50m coastlines. Mass-moment analysis follows [Nakamura, Lall, Kushnir & Camargo (2009), *Journal of Climate*](https://doi.org/10.1175/2009JCLI2828.1).</sub>
