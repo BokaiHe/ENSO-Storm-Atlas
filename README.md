@@ -95,16 +95,4 @@ To publish: **Settings → Pages → Deploy from a branch → `main` / `docs`**.
 - **Limitations:** the samples are small. For 1966–2025 there are 14 La Niña and 15 El Niño seasons. Pre-1966 records miss some short-lived storms. AMO and long-term warming are not controlled. All results are correlations.
 </details>
 
-<details>
-<summary><b>What was fixed from the original notebook</b></summary>
-
-This project is a redesign and correction of [sarika-debruyn/hurricane-prediction-ml](https://github.com/sarika-debruyn/hurricane-prediction-ml). The original notebook had these problems:
-
-- Its Saffir–Simpson categorisation counted tropical depressions as Category 1 and treated missing winds as Category 5.
-- Its ENSO 5-month rule sorted months alphabetically, and it mixed three different ENSO definitions.
-- Clustering dropped track points instead of whole storms, which truncated the tracks.
-- Each phase had its own K-Means model, so clusters could not be compared across phases.
-- It ran no significance tests.
-</details>
-
 <sub>Data: [IBTrACS v04r01](https://www.ncei.noaa.gov/products/international-best-track-archive) (NOAA NCEI) · [Oceanic Niño Index](https://www.cpc.ncep.noaa.gov/data/indices/oni.ascii.txt) (NOAA CPC) · Natural Earth 1:50m coastlines. Mass-moment analysis follows [Nakamura, Lall, Kushnir & Camargo (2009), *Journal of Climate*](https://doi.org/10.1175/2009JCLI2828.1).</sub>
