@@ -611,7 +611,7 @@ body {
       <div><h4 data-i="mLimits"></h4><ul data-i="mLimitsList"></ul></div>
     </div>
   </details>
-  <footer><span id="src"></span><span data-i="credit"></span></footer>
+  <footer><span id="src"></span></footer>
 </div>
 <div id="tip" hidden></div>
 
@@ -684,10 +684,10 @@ const I18N = {
     robH: 'Does it depend on the number of types?', robK: 'Types', robEast: 'East shift · type mix', robNorth: 'North shift · within type', robDetr: 'K = 4, trend removed',
     decNote: '<strong>Bars follow the filters above</strong>; faded bars are not significant. For 1966–2025 and all named storms, bars use the same 1,000-shuffle results as the table; other filters use 400 whole-season label shuffles. <strong>The table is fixed</strong> (1966–2025, all named storms): types re-clustered for each K, p-values from 1,000 shuffles of season labels between years.',
     conclIdx: 'Conclusion', conclH: 'El Niño thins out the deep-tropical tracks and nudges the rest north',
-    concl: (lon, lat, mix, within, n, auc) => `<span class="reading-block">Rebuilt on complete tracks (1966–2025, all named storms), the moment method gives a clear picture. In El Niño seasons the cloud of storm centroids sits <strong>${lon}° further east and ${lat}° further north</strong>. The eastward shift is almost entirely a change in which tracks occur: changes in the shares of <strong>all four track types together account for ${mix}°</strong> of it, including a lower share of Gulf and Caribbean tracks. Type mix remains the main component for every number of track types tested. </span><span class="reading-block">The northward shift happens inside the track types: the same kinds of tracks run <strong>about ${within}° further north</strong>, which holds for four or more types and after removing the long-term trend, <strong>but not with three</strong>. </span><span class="reading-block">Skewness and kurtosis carry a little information on their own, yet their <strong>gain on top of the centroid and spread is not established</strong> with ${n} seasons, and a single track carries only a <strong>weak ENSO signal (AUC ${auc})</strong>. The original project's question was a good one; on corrected data its answer is about where storms form and travel, not about a distinct El Niño track shape.</span>`,
+    concl: (lon, lat, mix, within, n, auc) => `<span class="reading-block">Using complete tracks (1966–2025, all named storms), the moment method gives a clear picture. In El Niño seasons the cloud of storm centroids sits <strong>${lon}° further east and ${lat}° further north</strong>. The eastward shift is almost entirely a change in which tracks occur: changes in the shares of <strong>all four track types together account for ${mix}°</strong> of it, including a lower share of Gulf and Caribbean tracks. Type mix remains the main component for every number of track types tested. </span><span class="reading-block">The northward shift happens inside the track types: the same kinds of tracks run <strong>about ${within}° further north</strong>, which holds for four or more types and after removing the long-term trend, <strong>but not with three</strong>. </span><span class="reading-block">Skewness and kurtosis carry a little information on their own, yet their <strong>gain on top of the centroid and spread is not established</strong> with ${n} seasons, and a single track carries only a <strong>weak ENSO signal (AUC ${auc})</strong>. These results mainly describe where storms form and travel.</span>`,
     fpIdx: 'Method check',
-    fpH2: 'Track moments, retested: the centroid shift holds; any gain from higher orders is unproven',
-    fpSub: 'The original project follows Nakamura, Lall, Kushnir and Camargo (2009, <i>Journal of Climate</i>), who summarized each North Atlantic track by its “mass moments” (centroid, variance and covariance) and grouped the tracks. Here the method is rebuilt on <strong>complete tracks</strong>, its ENSO signal is retested, and the project’s own extension to <strong>skewness and kurtosis</strong> is put to the test.',
+    fpH2: 'Track moments: the centroid shift holds; any gain from higher orders is unproven',
+    fpSub: 'Nakamura, Lall, Kushnir and Camargo (2009, <i>Journal of Climate</i>) summarized each North Atlantic track by its “mass moments” (centroid, variance and covariance) and grouped the tracks. This atlas applies mass moments to <strong>complete tracks</strong> to assess their ENSO signal and test whether <strong>skewness and kurtosis add information</strong>.',
     vCen: 'Centroid shift in El Niño years', vCenSub: (d, dir, px, py) => `and ${d}° further ${dir} · east–west ${px}, north–south ${py}`,
     vTilt: 'Northeast tilt (covariance)', vTiltSub: (a, b, p) => `El Niño ${a} vs La Niña ${b} deg² · ${p}`,
     vHigh: 'Skewness & kurtosis on top of the centroid and spread', vHighSub: (a, b, lo, hi) => `AUC ${a} → ${b}; season-bootstrap 95% interval for the gain: ${lo} to ${hi}`,
@@ -711,7 +711,7 @@ const I18N = {
     cenArrow: (dx, xd, dy, yd) => `${dx}° ${xd}, ${dy}° ${yd}`,
     cenLegDots: 'Storm centroids (El Niño / La Niña years)', cenLegEll: 'Typical 1σ shape', cenLegArrow: 'Arrow: La Niña mean → El Niño mean', centroidAt: 'Centroid',
     s3H: 'Third and fourth order: maybe a little extra, not yet established',
-    s3P: (h, hn, a, b, n, lo, hi) => `The original project added skewness and kurtosis. Their distributions overlap heavily between El Niño and La Niña storms, but they are not empty: on their own they reach an <strong>AUC of ${h}</strong> (shuffled seasons average ${hn}). Added to the centroid and spread they lift <strong>AUC from ${a} to ${b}</strong>, yet with only ${n} labelled seasons that gain sits within season-to-season noise (<strong>bootstrap 95% interval ${lo} to ${hi}</strong>). Whether they add anything beyond the lower moments is <strong>still an open question</strong>.`,
+    s3P: (h, hn, a, b, n, lo, hi) => `Skewness and kurtosis distributions overlap heavily between El Niño and La Niña storms, but they are not empty: on their own they reach an <strong>AUC of ${h}</strong> (shuffled seasons average ${hn}). Added to the centroid and spread they lift <strong>AUC from ${a} to ${b}</strong>, yet with only ${n} labelled seasons that gain sits within season-to-season noise (<strong>bootstrap 95% interval ${lo} to ${hi}</strong>). Whether they add anything beyond the lower moments is <strong>still an open question</strong>.`,
     ridgeH: 'Distribution of each higher moment', ridgeAria: 'Density curves of skewness and kurtosis for El Niño and La Niña storms',
     overlap: o => `${o}% overlap`, meanDiff: p => `mean difference ${p}`, ridgeFoot: 'Dashed lines: group means. Overlap: the shared area of the two normalised distributions.',
     allMomSum: 'All nine moments, by group', thOrder: 'Order', thMoment: 'Moment',
@@ -723,7 +723,6 @@ const I18N = {
     mMethodsList: '<li>ACE = sum of squared wind speeds at tropical-stage fixes ≥ 34 kt ÷ 10⁴.</li><li>US landfall: a fix with <code>LANDFALL = 0</code> and ≥ 34 kt inside the contiguous US polygon.</li><li>Significance: permutation tests by season (4,000 shuffles, fixed seed), so storms from the same year are never treated as independent. p-values are Monte Carlo estimates and can differ in the last digit from the Python scripts.</li><li>Track types: arc-length resampling to 16 points, then one K-Means model with K = 4 (highest silhouette for K = 3–7: <span class="mono" id="sil"></span>).</li><li>Moments: computed from the latitude and longitude of 6-hourly fixes; storms with fewer than 4 fixes are skipped.</li>',
     mLimitsList: '<li>Each ENSO phase includes relatively few seasons, so one extreme season can move an average.</li><li>Before satellites (pre-1966), short-lived storms far out at sea were missed, so the default period starts in 1966.</li><li>The AMO and the long-term Atlantic warming trend also affect activity and are not controlled for here. 2023 is the counterexample: an El Niño year that was still busy.</li><li>Everything shown is correlation. The mechanism (El Niño strengthens wind shear over the Caribbean) comes from the literature and is not tested here.</li>',
     phaseSampleSize: (y0, y1, nina, nino) => `${y0}–${y1}: ${nina} La Niña seasons and ${nino} El Niño seasons. With these small samples, one extreme season can move an average.`,
-    credit: 'Redesigned from sarika-debruyn/hurricane-prediction-ml.',
     src: (a, b) => `Data: ${a}; ${b}. Coastlines: Natural Earth 1:50m.`,
     phn: { nino: 'El Niño', neutral: 'Neutral', nina: 'La Niña' },
     phy: { nino: 'El Niño years', neutral: 'Neutral years', nina: 'La Niña years' },
@@ -816,10 +815,10 @@ const I18N = {
     robH: '换聚类数，结论还在吗？', robK: '类型数', robEast: '东移 · 类型构成', robNorth: '北移 · 类内', robDetr: 'K = 4，扣除长期趋势',
     decNote: '<strong>条形图随上方筛选变化</strong>，淡色表示不显著。1966 年起、全部风暴时，条形图与表格共用 1000 次置换的结果；其他筛选使用 400 次按整年打乱标签的置换。<strong>表格为固定结果</strong>（1966–2025 年，全部命名风暴）：每个 K 都重新聚类，p 值来自在年份之间打乱标签 1000 次。',
     conclIdx: '结论', conclH: '厄尔尼诺削减深热带路径，并把其余风暴往北推',
-    concl: (lon, lat, mix, within, n, auc) => `<span class="reading-block">在完整路径上重建矩方法后（1966–2025 年，全部命名风暴），结论很清楚。厄尔尼诺年，风暴质心整体<strong>偏东 ${lon}°、偏北 ${lat}°</strong>。东移几乎全部来自路径类型的变化：<strong>四类路径的构成变化合计贡献了其中的 ${mix}°</strong>，其中墨西哥湾—加勒比型占比下降。类型构成是东移的主要部分，这一点在所有测试的聚类数下都成立。</span><span class="reading-block">北移则发生在各类路径内部：同一类路径整体<strong>偏北约 ${within}°</strong>，在分成 4 类及以上、以及扣除长期趋势后都成立，但<strong>分成 3 类时不显著</strong>。</span><span class="reading-block">偏度和峰度单独使用时带有一点信息，但只有 ${n} 个年份，它们在质心和铺开范围之上的<strong>增益尚未证实</strong>；单条路径携带的 ENSO <strong>信号也很弱（AUC ${auc}）</strong>。原项目提出的问题是好问题；在修正后的数据上，答案在于风暴在哪里生成、往哪里走，而不在于存在一种独特的“厄尔尼诺路径形状”。</span>`,
+    concl: (lon, lat, mix, within, n, auc) => `<span class="reading-block">基于完整路径的矩分析（1966–2025 年，全部命名风暴），结论很清楚。厄尔尼诺年，风暴质心整体<strong>偏东 ${lon}°、偏北 ${lat}°</strong>。东移几乎全部来自路径类型的变化：<strong>四类路径的构成变化合计贡献了其中的 ${mix}°</strong>，其中墨西哥湾—加勒比型占比下降。类型构成是东移的主要部分，这一点在所有测试的聚类数下都成立。</span><span class="reading-block">北移则发生在各类路径内部：同一类路径整体<strong>偏北约 ${within}°</strong>，在分成 4 类及以上、以及扣除长期趋势后都成立，但<strong>分成 3 类时不显著</strong>。</span><span class="reading-block">偏度和峰度单独使用时带有一点信息，但只有 ${n} 个年份，它们在质心和铺开范围之上的<strong>增益尚未证实</strong>；单条路径携带的 ENSO <strong>信号也很弱（AUC ${auc}）</strong>。这些结果主要描述风暴在哪里生成、往哪里走。</span>`,
     fpIdx: '方法检验',
-    fpH2: '重新检验矩方法：质心偏移站得住，高阶矩的增益尚未证实',
-    fpSub: '原项目的方法来自 Nakamura、Lall、Kushnir 与 Camargo（2009，<i>Journal of Climate</i>）：用路径的“质量矩”（质心、方差、协方差）概括每条北大西洋路径，再据此分类。这里在<strong>完整路径</strong>上重建这套方法，重新检验它的 ENSO 信号，并检验原项目额外加入的<strong>偏度和峰度是否有用</strong>。',
+    fpH2: '路径的矩分析：质心偏移站得住，高阶矩的增益尚未证实',
+    fpSub: 'Nakamura、Lall、Kushnir 与 Camargo（2009，<i>Journal of Climate</i>）用路径的“质量矩”（质心、方差、协方差）概括每条北大西洋路径，再据此分类。本图谱基于<strong>完整路径</strong>进行矩分析，评估其中的 ENSO 信号，并检验<strong>偏度和峰度能否提供额外信息</strong>。',
     vCen: '厄尔尼诺年路径质心偏移', vCenSub: (d, dir, px, py) => `同时${dir} ${d}° · 东西向 ${px}，南北向 ${py}`,
     vTilt: '东北向倾斜（协方差）', vTiltSub: (a, b, p) => `厄尔尼诺 ${a}，拉尼娜 ${b}（度²）· ${p}`,
     vHigh: '在质心和铺开范围之上加入偏度与峰度', vHighSub: (a, b, lo, hi) => `AUC ${a} → ${b}；按年份 bootstrap 的增益 95% 区间：${lo} 至 ${hi}`,
@@ -843,7 +842,7 @@ const I18N = {
     cenArrow: (dx, xd, dy, yd) => `${xd} ${dx}°，${yd} ${dy}°`,
     cenLegDots: '风暴质心（厄尔尼诺年 / 拉尼娜年）', cenLegEll: '典型 1σ 形状', cenLegArrow: '箭头：拉尼娜均值 → 厄尔尼诺均值', centroidAt: '质心',
     s3H: '三阶、四阶矩：也许多一点信号，但尚未证实',
-    s3P: (h, hn, a, b, n, lo, hi) => `原项目额外加入了偏度和峰度。它们在两类年份之间的分布高度重叠，但并非毫无信息：单独使用时 <strong>AUC 为 ${h}</strong>（打乱年份标签后平均 ${hn}）。加在质心和铺开范围之上，<strong>AUC 从 ${a} 升到 ${b}</strong>；但只有 ${n} 个有标签的年份，这点增益落在年份间的随机波动之内（<strong>bootstrap 95% 区间 ${lo} 至 ${hi}</strong>）。它们能否在低阶矩之外提供额外信息，<strong>目前还没有定论</strong>。`,
+    s3P: (h, hn, a, b, n, lo, hi) => `偏度和峰度在两类年份之间的分布高度重叠，但并非毫无信息：单独使用时 <strong>AUC 为 ${h}</strong>（打乱年份标签后平均 ${hn}）。加在质心和铺开范围之上，<strong>AUC 从 ${a} 升到 ${b}</strong>；但只有 ${n} 个有标签的年份，这点增益落在年份间的随机波动之内（<strong>bootstrap 95% 区间 ${lo} 至 ${hi}</strong>）。它们能否在低阶矩之外提供额外信息，<strong>目前还没有定论</strong>。`,
     ridgeH: '各高阶矩的分布', ridgeAria: '厄尔尼诺年与拉尼娜年风暴的偏度、峰度分布曲线',
     overlap: o => `重叠 ${o}%`, meanDiff: p => `均值差 ${p}`, ridgeFoot: '虚线：组均值。重叠：两条归一化分布共同覆盖的面积。',
     allMomSum: '全部 9 个矩的分组数值', thOrder: '阶', thMoment: '矩',
@@ -855,7 +854,6 @@ const I18N = {
     mMethodsList: '<li>ACE = 热带阶段 ≥ 34 kt 的定时点风速平方和 ÷ 10⁴。</li><li>美国登陆：<code>LANDFALL = 0</code> 且 ≥ 34 kt 的点落在美国本土多边形内。</li><li>显著性：以年为单位的置换检验，4000 次，固定种子，没有把同一年的风暴当作独立样本。p 值是蒙特卡洛估计，末位可能与 Python 脚本略有差异。</li><li>路径类型：弧长重采样 16 点后做单一 K-Means，K = 4（K = 3–7 中轮廓系数最高，<span class="mono" id="sil"></span>）。</li><li>高阶矩：在 6 小时定时点的经纬度上计算；少于 4 个点的风暴不计入。</li>',
     mLimitsList: '<li>各 ENSO 位相的样本年份较少，单个极端季节就能拉动均值。</li><li>1966 年前没有卫星，远洋短命风暴有漏记，所以默认从 1966 年开始统计。</li><li>AMO 和大西洋变暖趋势也会影响活跃度，这里没有控制。2023 年就是厄尔尼诺年风暴依然很多的反例。</li><li>页面展示的是相关性；“厄尔尼诺增强加勒比上空的风切变”这一机制来自文献，不是本页检验的结果。</li>',
     phaseSampleSize: (y0, y1, nina, nino) => `${y0}–${y1} 年：拉尼娜 ${nina} 年、厄尔尼诺 ${nino} 年。样本年份较少，单个极端季节就能拉动均值。`,
-    credit: '由 sarika-debruyn/hurricane-prediction-ml 重新设计。',
     src: (a, b) => `数据：${a}；${b}。海岸线 Natural Earth 1:50m。`,
     phn: { nino: '厄尔尼诺', neutral: '中性', nina: '拉尼娜' },
     phy: { nino: '厄尔尼诺年', neutral: '中性年', nina: '拉尼娜年' },
