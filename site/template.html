@@ -1,8 +1,8 @@
 <title>ENSO Storm Atlas</title>
 <script>
-// Restore the saved palette before the first paint, even before the chart library loads.
-try { document.documentElement.dataset.theme = localStorage.getItem('enso-atlas-theme') === 'light' ? 'light' : 'dark'; }
-catch (e) { document.documentElement.dataset.theme = 'dark'; }
+// Default to light on first visit; restore an explicit preference before the first paint.
+try { document.documentElement.dataset.theme = localStorage.getItem('enso-atlas-theme') === 'dark' ? 'dark' : 'light'; }
+catch (e) { document.documentElement.dataset.theme = 'light'; }
 </script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -445,8 +445,8 @@ body {
         <input type="radio" name="cat" id="c3" value="3"><label for="c3" data-i="c3"></label>
       </div></div>
       <div class="seg" role="group" data-ia="theme"><div class="opts">
-        <input type="radio" name="theme" id="tDark" value="dark" checked><label for="tDark" data-i="themeDark"></label>
-        <input type="radio" name="theme" id="tLight" value="light"><label for="tLight" data-i="themeLight"></label>
+        <input type="radio" name="theme" id="tDark" value="dark"><label for="tDark" data-i="themeDark"></label>
+        <input type="radio" name="theme" id="tLight" value="light" checked><label for="tLight" data-i="themeLight"></label>
       </div></div>
       <div class="seg" role="group" aria-label="Language / 语言"><div class="opts">
         <input type="radio" name="lang" id="lEN" value="en" checked><label for="lEN">EN</label>
