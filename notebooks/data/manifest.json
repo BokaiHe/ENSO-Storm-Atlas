@@ -1,0 +1,28 @@
+{
+  "snapshot_date": "2026-10-19",
+  "analysis_period": [
+    1966,
+    2025
+  ],
+  "archive_period": [
+    1950,
+    2025
+  ],
+  "source_commit": "df4cc4476d6318f1abf692a8d1c5346b63e07c9f",
+  "sources": {
+    "tracks": "https://www.ncei.noaa.gov/data/international-best-track-archive-for-climate-stewardship-ibtracs/v04r01/access/csv/ibtracs.NA.list.v04r01.csv",
+    "oni": "https://www.cpc.ncep.noaa.gov/data/indices/oni.ascii.txt",
+    "land": "https://cdn.jsdelivr.net/npm/world-atlas@2.0.2/land-50m.json"
+  },
+  "files": {
+    "atlantic_land.geojson": "9be19bf486de58216919ec6c7eb3ffc0c28dfad1a7028aded04d8fe477a8c2ac",
+    "atlas_snapshot.json": "de8849c44bf48bbebd4dc8c2762e32badcaf6735c6ff1a6ae623084fbb04fed4"
+  },
+  "raw_input_sha256": {
+    "countries50.json": "04342cdc1e3016bcd7db1630de95684d67b79fe3c8c460321e87aef469502394",
+    "ibtracs_na.csv": "4f640622259c6e4d30ccbea454ee838a1cfa88f3c06115fe5a56460de33f2094",
+    "land50.json": "619477ff690c086885e45cb91707d783805561bd75ae8e437b7d4694b0204e0f",
+    "oni.txt": "5d6fa3a2f857d916550d39c2c686e94cb942430195c82518e6a5d0f5ffbd0665"
+  },
+  "note": "Fixed processed snapshot used by the published atlas; analysis is recomputed by the notebook. Raw downloads are not needed to execute it."
+}

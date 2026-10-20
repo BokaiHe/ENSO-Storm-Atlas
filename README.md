@@ -50,6 +50,15 @@
 
 ---
 
+## Research notebook
+
+[**Read the executed academic notebook →**](notebooks/enso_storm_atlas_research.ipynb)
+
+A complete research narrative in Chinese with English figure labels: background and questions, data provenance, season-level inference, track types, centroid decomposition, robustness, and grouped predictive validation. All statistics are recomputed from a versioned snapshot. The notebook includes **seven figure sets**, exported as **300 dpi PNG, PDF and SVG**, plus machine-readable result tables.
+
+- [Figures](notebooks/figures/) · [Results](notebooks/results/) · [Reproduction guide](notebooks/README.md)
+- Run from a fresh kernel: `pip install -r requirements-notebook.txt`, then `python scripts/run_research_notebook.py`.
+
 ## Run it
 
 ```bash
