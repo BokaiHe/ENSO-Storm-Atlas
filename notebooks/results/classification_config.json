@@ -1,10 +1,12 @@
 {
   "delta": 0.022177527487261983,
-  "ci_low": -0.04438283440302897,
-  "ci_high": 0.08209726101394502,
-  "bootstrap": 200,
+  "ci_low": -0.040526431722741264,
+  "ci_high": 0.07950000321599006,
+  "bootstrap": 1000,
   "permutations": 199,
   "splits": 10,
   "seasons": 29,
-  "storms": 391
+  "storms": 391,
+  "all_nine_ci_low": 0.5078879134669546,
+  "all_nine_ci_high": 0.6820958105135445
 }

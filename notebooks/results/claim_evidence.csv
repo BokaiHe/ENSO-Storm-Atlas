@@ -1,7 +1,8 @@
-结论,证据,图表
-ENSO 位相与季节活动强弱相关,风暴数差 5.14/年；Holm p=0.0165,图 1–2 / seasonal_contrasts.csv
-墨西哥湾—加勒比型贡献较大部分的数量差,该类型差 3.60/年；Holm p=0.0008,图 3 / type_rates.csv
-东移主要由类型构成变化解释,总东移 6.66°；构成项 5.85°,图 4–5 / centroid_decomposition.csv
-北移含类内位置变化，证据随类型分辨率变化,总北移 2.22°；类内项 1.58°,图 4–5 / decomposition_robustness.csv
-单条路径的 ENSO 区分能力有限,九矩 AUC=0.625，BH q=0.0075,图 6–7 / classification.csv
-高阶矩的额外增益尚未建立,"ΔAUC=+0.022；95% CI [-0.044,+0.082]",图 7 / auc_gain_bootstrap.csv
+Conclusion,Evidence,Source
+Seasonal activity differs between phases,Count difference 5.14/season; primary Holm p=0.0165,Figs. 1–2; seasonal_contrasts.csv
+Gulf–Caribbean tracks contribute much of the count contrast,Type-rate difference 3.60/season; Holm p=0.0008,Fig. 3; type_rates.csv
+Type mix dominates the eastward point estimate,Total 6.66°; mix 5.85°,Figs. 4–5; centroid_decomposition.csv
+Northward within-type displacement is setting-sensitive,Total 2.22°; within type 1.58°; inspect sensitivity intervals,Figs. 4–5; decomposition_robustness.csv
+Temporal assumptions affect inferential strength,Circular-shift Holm p=0.050 for activity; 0.100 for four main spatial statistics,temporal_sensitivity.csv
+Single-track discrimination is limited,All-nine AUC=0.625; primary BH q=0.0075,Figs. 6–7; classification.csv
+An incremental higher-order gain is not established,"Delta AUC=+0.022; 95% CI [-0.041, +0.080]",Fig. 7; auc_gain_bootstrap.csv

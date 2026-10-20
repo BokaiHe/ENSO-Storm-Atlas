@@ -1,0 +1,13 @@
+phase,type,storms,total_storms,share
+nina,Gulf & Caribbean,83,226,0.3672566371681416
+nina,East Coast recurver,60,226,0.26548672566371684
+nina,Mid-Atlantic recurver,44,226,0.19469026548672566
+nina,Cape Verde type,39,226,0.17256637168141592
+neutral,Gulf & Caribbean,122,399,0.3057644110275689
+neutral,East Coast recurver,109,399,0.2731829573934837
+neutral,Mid-Atlantic recurver,97,399,0.24310776942355888
+neutral,Cape Verde type,71,399,0.17794486215538846
+nino,Gulf & Caribbean,35,165,0.21212121212121213
+nino,East Coast recurver,48,165,0.2909090909090909
+nino,Mid-Atlantic recurver,44,165,0.26666666666666666
+nino,Cape Verde type,38,165,0.23030303030303031

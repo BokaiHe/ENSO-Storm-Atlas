@@ -20,6 +20,7 @@ from threadpoolctl import threadpool_limits
 import matplotlib.pyplot as plt
 from matplotlib.collections import LineCollection, PolyCollection
 from matplotlib.lines import Line2D
+from matplotlib.ticker import MaxNLocator
 
 BASE = Path(__file__).resolve().parent
 OUT = BASE / 'results'
@@ -69,6 +70,25 @@ def adjust(pvalues, method='holm'):
     return result
 
 
+def resample_track(lon, lat, n=16):
+    """Interpolate positions at equal cumulative great-circle distances.
+
+    Haversine segment lengths are invariant to a change of longitude origin.
+    Longitude is unwrapped before interpolation; repeated stationary fixes
+    are removed from the distance knots, not from the moment calculation.
+    """
+    lon = np.degrees(np.unwrap(np.radians(np.asarray(lon, float))))
+    lat = np.asarray(lat, float)
+    lam, phi = np.radians(lon), np.radians(lat)
+    h = np.sin(np.diff(phi)/2)**2 + np.cos(phi[:-1])*np.cos(phi[1:])*np.sin(np.diff(lam)/2)**2
+    distance = np.r_[0., np.cumsum(2*np.arcsin(np.sqrt(np.clip(h, 0, 1))))]
+    if distance[-1] == 0:
+        return np.r_[np.full(n, lon[0]), np.full(n, lat[0])]
+    keep = np.r_[True, np.diff(distance) > 0]
+    q = np.linspace(0, distance[-1], n)
+    return np.r_[np.interp(q, distance[keep], lon[keep]), np.interp(q, distance[keep], lat[keep])]
+
+
 def load_data():
     manifest = json.loads((BASE / 'data/manifest.json').read_text(encoding='utf-8'))
     for name, digest in manifest['files'].items():
@@ -83,13 +103,7 @@ def load_data():
         lon, lat = a[:, 0] / 10, a[:, 1] / 10
         assert np.isfinite(a).all()
         tracks.append(np.c_[lon, lat])
-        x = lon * np.cos(np.radians(lat))
-        distance = np.r_[0., np.cumsum(np.hypot(np.diff(x), np.diff(lat)))]
-        if distance[-1] == 0:
-            features.append(np.r_[np.full(16, lon[0]), np.full(16, lat[0])])
-        else:
-            q = np.linspace(0, distance[-1], 16)
-            features.append(np.r_[np.interp(q, distance, lon), np.interp(q, distance, lat)])
+        features.append(resample_track(lon, lat))
         if len(lon) < 4:
             moments.append([lon.mean(), lat.mean()] + [np.nan] * 7)
         else:
@@ -203,7 +217,7 @@ def fig_activity(season, results):
 
 
 def cluster_results(storms, features, season):
-    # Longitude weighting matches the atlas; full-track positions, not moments, define types.
+    # Geodesically resampled positions; fixed longitude weighting defines clustering distance.
     x = features.copy(); x[:, :16] *= np.cos(np.radians(25))
     fits, rows = {}, []
     with threadpool_limits(limits=1):
@@ -220,8 +234,15 @@ def cluster_results(storms, features, season):
                         'p_permutation': ps, 'p_holm': adjust(ps)})
     write_table(pd.DataFrame(rows), 'cluster_selection')
     write_table(tab, 'type_rates')
-    # Re-fitting rounded positions can change a few assignments; snapshot labels are the atlas definition.
+    shares = []
+    for phase in PHASES:
+        ss = storms[(storms.y >= 1966) & (storms.phase == phase)]
+        for k in range(4):
+            shares.append({'phase':phase,'type':TYPES[k],'storms':int((ss.k == k).sum()),'total_storms':len(ss),'share':float((ss.k == k).mean())})
+    write_table(pd.DataFrame(shares), 'type_shares')
+    # Primary labels retain the atlas definition; geodesic refits are an explicit sensitivity analysis.
     agreement = adjusted_rand_score(storms.k, fits[4])
+    write_table(pd.DataFrame({'id': storms.id, **{f'geodesic_K{k}': v for k, v in fits.items()}}), 'cluster_assignments')
     return fits, tab, pd.DataFrame(rows), agreement
 
 
@@ -242,11 +263,11 @@ def fig_types(storms, tracks, features, season, table):
             vals = season.loc[1966:].query('p == @phase')[f'k{k}'].to_numpy(float)
             boots = vals[rng.integers(len(vals), size=(5000, len(vals)))].mean(axis=1)
             lo, hi = np.percentile(boots, [2.5, 97.5])
-            ax.bar(i, vals.mean(), color=COLORS[phase], edgecolor='white', width=.65)
-            ax.errorbar(i, vals.mean(), yerr=[[vals.mean()-lo], [hi-vals.mean()]], color='#222', capsize=3, fmt='none')
-        ax.set_xticks(range(3), ['LN', 'Neutral', 'EN'])
-        ax.set_ylim(0, 9)
-        ax.set_title(f'{chr(101+k)}  Holm {ptext(table.iloc[k].p_holm)}', fontsize=10)
+            ax.scatter(i+rng.uniform(-.13,.13,len(vals)), vals, color=COLORS[phase], s=14, alpha=.45, linewidths=0)
+            ax.errorbar(i+.23, vals.mean(), yerr=[[vals.mean()-lo], [hi-vals.mean()]], color=COLORS[phase], capsize=3, fmt='D', markersize=5)
+        ax.set_xticks(range(3), ['LN\nn = 14', 'Neutral\nn = 31', 'EN\nn = 15'])
+        ax.set_ylim(-.4, season.loc[1966:, ['k0','k1','k2','k3']].to_numpy().max()+2)
+        ax.set_title(f'{chr(101+k)}  Difference {table.iloc[k].delta_nina_minus_nino:.1f}/season\nHolm {ptext(table.iloc[k].p_holm)}', fontsize=9)
         if k == 0: ax.set_ylabel('Mean storms / season (95% CI)')
     save(fig, 'fig03_track_types')
 
@@ -314,7 +335,7 @@ def decompose(storms, labels, k=4, start=1966, detrend=False, permutations=3999,
 
 
 def fig_decomposition(storms, table):
-    fig = plt.figure(figsize=(11.5, 6), layout='constrained')
+    fig = plt.figure(figsize=(11.5, 4.5), layout='constrained')
     gs = fig.add_gridspec(2, 2, width_ratios=[1.15, 1])
     ax = fig.add_subplot(gs[:, 0]); coastline(ax)
     for phase in ['nina', 'nino']:
@@ -330,65 +351,95 @@ def fig_decomposition(storms, table):
             ax.errorbar(row.estimate, j, xerr=[[row.estimate-row.ci_low],[row.ci_high-row.estimate]],
                         fmt='o', color=['#252C35','#1768AE','#C44727'][j], capsize=4)
         ax.set_yticks(range(3), ['Total', 'Type mix', 'Within type'])
-        ax.invert_yaxis(); ax.axvline(0, ls='--', color='#A0A0A0', lw=.8)
+        ax.set_ylim(2.5, -.5); ax.axvline(0, ls='--', color='#A0A0A0', lw=.8)
         ax.set(xlabel='El Niño − La Niña (°, 95% CI)', title=f'{chr(98+i)}  {name.capitalize()} shift')
     save(fig, 'fig04_centroid_decomposition')
 
 
 def robustness(storms, fits, season):
     rows = []
+    t = decompose(storms, storms.k)
+    t['model'] = 'Atlas K = 4'; rows.append(t)
     for k in range(3, 8):
-        t = decompose(storms, fits[k], k, permutations=999, bootstrap=0)
-        t['model'] = f'K = {k}'
-        rows.append(t)
-    t = decompose(storms, storms.k, detrend=True, permutations=999, bootstrap=0)
-    t['model'] = 'K = 4, detrended'; rows.append(t)
+        t = decompose(storms, fits[k], k, permutations=999, bootstrap=2000)
+        t['model'] = f'Geodesic K = {k}'; rows.append(t)
+    t = decompose(storms, storms.k, detrend=True, permutations=999, bootstrap=2000)
+    t['model'] = 'Atlas K = 4, detrended'; rows.append(t)
     result = write_table(pd.concat(rows, ignore_index=True), 'decomposition_robustness')
     sensitivity = []
     for start in [1950, 1966, 1980]:
         for cat in [0, 1, 3]:
             subset = storms[(storms.y >= start) & (storms.c >= cat)]
-            s = subset.groupby('y').size().reindex(season.loc[start:].index, fill_value=0)
+            ss = subset.groupby('y').size().reindex(season.loc[start:].index, fill_value=0)
             phases = season.loc[start:].p
-            delta, ci, p = mean_contrast(s[phases == 'nina'], s[phases == 'nino'], permutations=3999, bootstrap=2000, seed=88)
-            sensitivity.append({'start':start,'min_category':cat,'delta_storms_per_year':float(delta),'ci_low':ci[0], 'ci_high':ci[1], 'p':float(p)})
+            delta, ci, p = mean_contrast(ss[phases == 'nina'], ss[phases == 'nino'], permutations=3999, bootstrap=2000, seed=88)
+            sensitivity.append({'start':start,'min_category':cat,'delta_storms_per_year':float(delta),'ci_low':ci[0], 'ci_high':ci[1], 'p':float(p),
+                                'n_nina_seasons':int((phases=='nina').sum()),'n_nino_seasons':int((phases=='nino').sum())})
     write_table(pd.DataFrame(sensitivity), 'period_intensity_sensitivity')
     loo = []
     for year in storms.query('y >= 1966 and phase != "neutral"').y.unique():
-        t = decompose(storms[storms.y != year], storms.loc[storms.y != year, 'k'], permutations=19, bootstrap=0)
-        for axis in ['longitude', 'latitude']:
-            row = t[(t.axis == axis) & (t.component == 'total')].iloc[0]
-            loo.append({'omitted_year':int(year),'axis':axis,'estimate':row.estimate})
+        ss=storms[storms.y != year]
+        _, counts, sums, positive=year_blocks(ss, ss.k, 4)
+        value=component(counts[positive].sum(0),sums[positive].sum(0),counts[~positive].sum(0),sums[~positive].sum(0))
+        for i, axis in enumerate(['longitude', 'latitude']):
+            loo.append({'omitted_year':int(year),'axis':axis,'estimate':value[i,0]})
     write_table(pd.DataFrame(loo), 'leave_one_season_out')
     return result, pd.DataFrame(sensitivity), pd.DataFrame(loo)
 
 
+def temporal_sensitivity(storms, season):
+    """All circular alignments of the 60-year phase sequence, including identity.
+
+    Retains the phase sequence's cyclic dependence, but assumes stationarity
+    under relative shifts. A sensitivity diagnostic, not an iid permutation.
+    """
+    sy=season.loc[1966:2025]; years=sy.index.to_numpy(); phases=sy.p.to_numpy()
+    counts=np.zeros((len(years),4)); sums=np.zeros((len(years),4,2))
+    for i, year in enumerate(years):
+        for k in range(4):
+            ss=storms[(storms.y==year)&(storms.k==k)]
+            counts[i,k]=len(ss); sums[i,k]=ss[['Ex','Ey']].sum().to_numpy()
+    values=[]
+    for shift in range(len(years)):
+        ph=np.roll(phases,shift); a,b=ph=='nino',ph=='nina'
+        delta=sy.loc[b,['storms','ace','us']].mean().to_numpy()-sy.loc[a,['storms','ace','us']].mean().to_numpy()
+        dec=component(counts[a].sum(0),sums[a].sum(0),counts[b].sum(0),sums[b].sum(0))
+        assert dec is not None
+        values.append(np.r_[delta,dec.ravel()])
+    values=np.array(values); ps=(np.abs(values)>=np.abs(values[0])-1e-12).mean(0)
+    labels=['storms','ace','us']+[f'{axis}_{part}' for axis in ['longitude','latitude'] for part in ['total','type_mix','within_type']]
+    out=pd.DataFrame({'outcome':labels,'estimate':values[0],'p_circular':ps,
+                      'p_holm_within_family':np.r_[adjust(ps[:3]),adjust(ps[3:])], 'alignments':len(years)})
+    write_table(pd.DataFrame(values,columns=labels).assign(shift=np.arange(len(years))), 'circular_shift_nulls')
+    return write_table(out,'temporal_sensitivity')
+
+
 def fig_robustness(table, sensitivity):
-    fig, axs = plt.subplots(1, 3, figsize=(12.5, 5), layout='constrained')
+    fig, axs = plt.subplots(1, 3, figsize=(13, 5.1), layout='constrained', gridspec_kw={'width_ratios':[1.15,1.15,1]})
     for ax, axis, comp, title in zip(axs[:2], ['longitude','latitude'], ['type_mix','within_type'],
                                     ['a  East shift: type mix', 'b  North shift: within type']):
         t = table[(table.axis == axis) & (table.component == comp)]
         for i, (_, r) in enumerate(t.iterrows()):
-            ax.scatter(r.estimate, i, s=55, color='#1768AE' if axis=='longitude' else '#C44727',
-                       facecolors='none' if r.p_permutation>=.05 else None)
-            ax.annotate(ptext(r.p_permutation), (r.estimate, i), xytext=(8, 0), textcoords='offset points', va='center', fontsize=8)
-        ax.set_yticks(range(len(t)), t.model); ax.invert_yaxis()
-        ax.set(xlabel='El Niño − La Niña (°)', title=title)
-        ax.set_xlim(0, 9 if axis=='longitude' else 3.5)
+            ax.errorbar(r.estimate,i,xerr=[[r.estimate-r.ci_low],[r.ci_high-r.estimate]],fmt='o',capsize=3,
+                        color='#1768AE' if axis=='longitude' else '#C44727',markersize=5)
+        ax.set_yticks(range(len(t)), t.model if axis=='longitude' else [])
+        ax.set_ylim(len(t)-.5,-.5)
+        ax.axvline(0,color='#999',ls='--',lw=.8)
+        ax.set(xlabel='El Niño − La Niña (°, 95% CI)', title=title)
     ax=axs[2]
     for j, cat in enumerate([0,1,3]):
         t=sensitivity[sensitivity.min_category==cat]
         ax.errorbar(t.start+j*1.2, t.delta_storms_per_year,
                     yerr=[t.delta_storms_per_year-t.ci_low,t.ci_high-t.delta_storms_per_year],
-                    fmt=['o','s','^'][j], capsize=3, label=['All named','Hurricanes','Major'][j])
+                    fmt=['o','s','^'][j], capsize=3, label=['All storms','Hurricanes','Major'][j])
     ax.axhline(0,color='#999',ls='--',lw=.8)
-    ax.set(xticks=[1950,1966,1980],xlabel='First season (end: 2025)',ylabel='La Niña − El Niño storms / season',title='c  Period and intensity sensitivity')
+    ax.set(xticks=[1950,1966,1980],xlabel='First season (end: 2025)',ylabel='La Niña − El Niño storms / season',title='c  Period and intensity')
     ax.legend(fontsize=8,loc='upper left')
     save(fig,'fig05_robustness')
 
 
 def moment_results(storms, permutations=9999):
-    s=storms[(storms.y>=1966)&storms.phase.isin(['nino','nina'])].dropna(subset=MOMENTS)
+    s=storms[(storms.y>=1966)&storms.phase.isin(['nino','nina'])].replace([np.inf,-np.inf],np.nan).dropna(subset=MOMENTS)
     years=np.sort(s.y.unique()); counts=np.array([(s.y==y).sum() for y in years])
     sums=np.array([s.loc[s.y==y,MOMENTS].sum().values for y in years])
     pos=np.array([s.loc[s.y==y,'phase'].iloc[0]=='nino' for y in years]);a,b=np.flatnonzero(pos),np.flatnonzero(~pos)
@@ -402,13 +453,15 @@ def moment_results(storms, permutations=9999):
 
 def fig_moments(storms, table):
     fig,axs=plt.subplots(3,3,figsize=(11.5,9),layout='constrained')
-    s=storms[(storms.y>=1966)&storms.phase.isin(['nino','nina'])].dropna(subset=MOMENTS)
+    s=storms[(storms.y>=1966)&storms.phase.isin(['nino','nina'])].replace([np.inf,-np.inf],np.nan).dropna(subset=MOMENTS)
     for j,(ax,col,label) in enumerate(zip(axs.flat,MOMENTS,MOM_LABELS)):
         lo,hi=s[col].min(),s[col].max()
-        left = max(0, lo-.06*(hi-lo)) if col in ['Vx','Vy'] else lo-.06*(hi-lo)
+        boundary = 0 if col in ['Vx','Vy'] else (-2 if col in ['Kx','Ky'] else None)
+        left = max(boundary, lo-.06*(hi-lo)) if boundary is not None else lo-.06*(hi-lo)
         grid=np.linspace(left,hi+.06*(hi-lo),400)
         for phase in ['nina','nino']:
-            vals=s[s.phase==phase][col]; density=gaussian_kde(vals)(grid)
+            vals=s[s.phase==phase][col]; kde=gaussian_kde(vals); density=kde(grid)
+            if boundary is not None: density += kde(2*boundary-grid)
             ax.plot(grid,density,color=COLORS[phase],lw=1.6,label=LABELS[phase])
             ax.fill_between(grid,0,density,color=COLORS[phase],alpha=.08)
         ax.set(xlabel=label,ylabel='Density',title=f'{chr(97+j)}  BH q = {table.iloc[j].q_bh:.3f}')
@@ -429,8 +482,8 @@ def cv_auc(x, y, groups, seed, balanced=True):
     return roc_auc_score(y,pred)
 
 
-def classification(storms,features,splits=10,permutations=199,bootstrap=200):
-    s=storms[(storms.y>=1966)&storms.phase.isin(['nina','nino'])].dropna(subset=MOMENTS)
+def classification(storms,features,splits=10,permutations=199,bootstrap=1000):
+    s=storms[(storms.y>=1966)&storms.phase.isin(['nina','nino'])].replace([np.inf,-np.inf],np.nan).dropna(subset=MOMENTS)
     groups=s.y.to_numpy();y=(s.phase=='nina').to_numpy(int);years=np.unique(groups)
     sets={'Centroid':s[['Ex','Ey']].to_numpy(),'First + second':s[MOMENTS[:5]].to_numpy(),
           'Skewness + kurtosis':s[MOMENTS[5:]].to_numpy(),'All nine moments':s[MOMENTS].to_numpy(),
@@ -451,21 +504,22 @@ def classification(storms,features,splits=10,permutations=199,bootstrap=200):
             rows.append({'features':name,'auc':obs,'split_min':repeated.min(),'split_max':repeated.max(),
                          'null_mean':null.mean(),'null_05':lo,'null_95':hi,'p_permutation':p})
             print(f'{name}: AUC {obs:.3f}; permutation p {p:.3f}',flush=True)
-        a=sets['First + second'];b=sets['All nine moments'];gains=[]
+        a=sets['First + second'];b=sets['All nine moments'];gains=[]; boot_low=[]; boot_all=[]
         ids={u:np.flatnonzero(groups==u) for u in years};en=years[season_labels==0];ln=years[season_labels==1]
         for rep in range(bootstrap):
             rng=np.random.default_rng(9000+rep)
             sampled=np.r_[rng.choice(en,len(en),replace=True),rng.choice(ln,len(ln),replace=True)]
             idx=np.concatenate([ids[u] for u in sampled])
             # Repeated copies retain the original year group: no copy enters train and test.
-            gains.append(score(b[idx],y[idx],groups[idx])-score(a[idx],y[idx],groups[idx]))
+            low=score(a[idx],y[idx],groups[idx]); full=score(b[idx],y[idx],groups[idx])
+            boot_low.append(low); boot_all.append(full); gains.append(full-low)
             if (rep+1)%50==0:print(f'Paired season bootstrap: {rep+1}/{bootstrap}',flush=True)
     table=pd.DataFrame(rows);table['q_bh']=adjust(table.p_permutation,'bh')
-    write_table(table,'classification');write_table(pd.DataFrame({'replicate':range(bootstrap),'auc_gain':gains}),'auc_gain_bootstrap')
+    write_table(table,'classification');write_table(pd.DataFrame({'replicate':range(bootstrap),'auc_first_second':boot_low,'auc_all_nine':boot_all,'auc_gain':gains}),'auc_gain_bootstrap')
     write_table(pd.DataFrame(nulls),'auc_permutation_nulls')
     delta=float(table.loc[table.features=='All nine moments','auc'].iloc[0]-table.loc[table.features=='First + second','auc'].iloc[0])
     lo,hi=np.percentile(gains,[2.5,97.5]);gain={'delta':delta,'ci_low':float(lo),'ci_high':float(hi),'bootstrap':bootstrap,
-                                            'permutations':permutations,'splits':splits,'seasons':len(years),'storms':len(s)}
+                                            'permutations':permutations,'splits':splits,'seasons':len(years),'storms':len(s),'all_nine_ci_low':float(np.percentile(boot_all,2.5)),'all_nine_ci_high':float(np.percentile(boot_all,97.5))}
     (OUT/'classification_config.json').write_text(json.dumps(gain,indent=2),encoding='utf-8')
     return table,np.array(gains),gain
 
@@ -485,5 +539,6 @@ def fig_classification(table,gains,gain):
     ax.axvline(0,color='#555',ls='--',lw=1);ax.axvline(gain['delta'],color='#C44727',lw=2,label=f'Observed gain {gain["delta"]:+.3f}')
     ax.axvspan(gain['ci_low'],gain['ci_high'],color='#1768AE',alpha=.07)
     ax.set(xlabel='AUC(all nine) − AUC(first + second)',ylabel='Bootstrap replicates',title='b  Increment from higher-order moments')
-    ax.legend(fontsize=9);ax.text(.03,.88,f'95% season-bootstrap interval\n[{gain["ci_low"]:+.3f}, {gain["ci_high"]:+.3f}]',transform=ax.transAxes,fontsize=9)
+    ax.xaxis.set_major_locator(MaxNLocator(nbins=5))
+    ax.legend(fontsize=9);ax.text(.03,.88,f'95% season-bootstrap interval\n[{gain["ci_low"]:+.3f}, {gain["ci_high"]:+.3f}]',transform=ax.transAxes,fontsize=9,bbox={'facecolor':'white','edgecolor':'none','alpha':.92,'pad':3},zorder=10)
     save(fig,'fig07_predictive_information')
