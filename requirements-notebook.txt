@@ -2,3 +2,4 @@
 nbformat>=5.10,<6
 nbclient>=0.10,<1
 ipykernel>=6.29,<8
+threadpoolctl>=3.6,<4

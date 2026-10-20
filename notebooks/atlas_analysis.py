@@ -139,6 +139,28 @@ def load_data():
     return d, years, storms, tracks, np.array(features), season, pd.DataFrame(cohorts)
 
 
+def cohort_summary(cohorts, storms, years, start=1966):
+    """Generate the input statement from the cohort table and actual exclusions."""
+    primary=cohorts.loc[cohorts.start == start].set_index('phase')
+    selected=storms.loc[storms.y >= start]
+    parts=[f"**Verified input:** {len(storms)} unique storms across {len(years)} seasons; "
+           f"{int(primary.storms.sum())} storms in the primary window."]
+    for phase in PHASES:
+        row=primary.loc[phase]
+        parts.append(f"**{int(row.storms)} {LABELS[phase]} storms in {int(row.seasons)} seasons** "
+                     f"({int(row.finite_nine_moments)} with finite nine-moment summaries).")
+    for phase in PHASES:
+        subset=selected.loc[selected.phase == phase]
+        short=int(subset.tk.map(lambda x:len(x)//3 < 4).sum())
+        excluded=int(primary.loc[phase,'storms']-primary.loc[phase,'finite_nine_moments'])
+        other=excluded-short
+        assert other >= 0
+        if short: parts.append(f"{short} {LABELS[phase]} storms have fewer than four fixes and are excluded only from nine-moment analyses.")
+        if other: parts.append(f"{other} additional {LABELS[phase]} storms have non-finite moments and are excluded from nine-moment analyses.")
+    parts.append("Packed winds reproduce ACE within the per-storm rounding tolerance.")
+    return ' '.join(parts)
+
+
 def mean_contrast(a, b, permutations=9999, bootstrap=5000, seed=42):
     """Mean(a)-mean(b), independent whole-season rows; stratified percentile CI."""
     a, b = np.asarray(a, float), np.asarray(b, float)
@@ -431,7 +453,7 @@ def fig_robustness(table, sensitivity):
         t=sensitivity[sensitivity.min_category==cat]
         ax.errorbar(t.start+j*1.2, t.delta_storms_per_year,
                     yerr=[t.delta_storms_per_year-t.ci_low,t.ci_high-t.delta_storms_per_year],
-                    fmt=['o','s','^'][j], capsize=3, label=['All storms','Hurricanes','Major'][j])
+                    fmt=['o','s','^'][j], color='#4B5563', capsize=3, label=['All storms','Hurricanes','Major'][j])
     ax.axhline(0,color='#999',ls='--',lw=.8)
     ax.set(xticks=[1950,1966,1980],xlabel='First season (end: 2025)',ylabel='La Niña − El Niño storms / season',title='c  Period and intensity')
     ax.legend(fontsize=8,loc='upper left')

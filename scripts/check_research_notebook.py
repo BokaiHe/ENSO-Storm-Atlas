@@ -120,6 +120,26 @@ assert np.allclose(value,-aa.component(cb,cb[:,None]*means,ca,ca[:,None]*means))
 shift=np.array([3.,2.]);value=aa.component(ca,ca[:,None]*(means+shift),ca,ca[:,None]*means)
 assert np.allclose(value[:,1],0) and np.allclose(value[:,2],shift)
 
+# Sample descriptions must update with the cohort table and exclusion reasons.
+_, full_years, full_storms, _, _, _, full_cohorts = aa.load_data()
+summary=aa.cohort_summary(full_cohorts,full_storms,full_years)
+input_cell=next(c for c in code if 'aa.load_data()' in c.source)
+assert any(o.get('data',{}).get('text/markdown') == summary for o in input_cell.outputs)
+changed=full_cohorts.copy()
+mask=(changed.start==1966)&(changed.phase=='nina')
+changed.loc[mask,['storms','finite_nine_moments']]+=2
+changed.loc[mask,'seasons']+=1
+row=changed.loc[mask].iloc[0]
+assert f"{int(row.storms)} La Niña storms in {int(row.seasons)} seasons" in aa.cohort_summary(changed,full_storms,full_years)
+changed_storms=full_storms.copy(deep=True)
+idx=changed_storms.index[(changed_storms.y>=1966)&(changed_storms.phase=='neutral')&changed_storms.tk.map(lambda x:len(x)>=12)][0]
+changed_storms.at[idx,'tk']=changed_storms.at[idx,'tk'][:9]
+changed=full_cohorts.copy()
+changed.loc[(changed.start==1966)&(changed.phase=='neutral'),'finite_nine_moments']-=1
+nshort=int(changed_storms.loc[(changed_storms.y>=1966)&(changed_storms.phase=='neutral'),'tk'].map(lambda x:len(x)<12).sum())
+assert f"{nshort} Neutral storms have fewer than four fixes" in aa.cohort_summary(changed,changed_storms,full_years)
+assert any(line.startswith('threadpoolctl') for line in (ROOT/'requirements-notebook.txt').read_text().splitlines())
+
 # Instrument the fitted estimator to catch duplicate-record train/test leakage.
 class NoLeakEstimator:
     def fit(self,x,y):

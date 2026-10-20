@@ -75,13 +75,7 @@ import atlas_analysis as aa
 
 d, years, storms, tracks, features, season, cohorts = aa.load_data()
 display(cohorts)
-display(Markdown(f"**Verified input:** {len(storms)} unique storms across {len(years)} seasons; "
-                 f"{int((storms.y >= 1966).sum())} storms in the primary window. "
-                 "The primary comparison contains **226 La Niña storms in 14 seasons** and "
-                 "**165 El Niño storms in 15 seasons**; 31 neutral seasons contain 399 storms. "
-                 "All 391 non-neutral storms have finite nine-moment summaries. Four neutral storms "
-                 "lack four fixes and are excluded only from nine-moment analyses. "
-                 "Packed winds reproduce ACE within the per-storm rounding tolerance."))
+display(Markdown(aa.cohort_summary(cohorts, storms, years)))
 ''')
 md(r'''
 ### Inference and uncertainty
@@ -218,7 +212,7 @@ display(Markdown('**Northward within-type estimates:** ' + '; '.join(
     for r in north.itertuples()) + '.'))
 ''')
 md(r'''
-**Figure 5 | Sensitivity of effect sizes and uncertainty.** Panels a–b compare atlas labels, geodesic K=3–7, and the detrended atlas analysis; rows correspond across panels. All use 391 non-neutral storms from 29 seasons. Bars are marginal 95% intervals from 2,000 season bootstraps with fitted types held fixed. Panel c shows count contrasts across windows and intensity thresholds, also with 2,000 season bootstraps. La Niña/El Niño sample sizes are 18/20 seasons from 1950, 14/15 from 1966, and 10/12 from 1980. Each model's six-component Holm results are tabulated; no across-model selection is used to declare a preferred model.
+**Figure 5 | Sensitivity of effect sizes and uncertainty.** Panels a–b compare atlas labels, geodesic K=3–7, and the detrended atlas analysis; rows correspond across panels. All use 391 non-neutral storms from 29 seasons. Bars are marginal 95% intervals from 2,000 season bootstraps with fitted types held fixed. Panel c shows count contrasts across windows and intensity thresholds, also with 2,000 season bootstraps. A single grey colour is used; circles, squares and triangles identify all storms, hurricanes and major hurricanes, respectively. La Niña/El Niño sample sizes are 18/20 seasons from 1950, 14/15 from 1966, and 10/12 from 1980. Each model's six-component Holm results are tabulated; no across-model selection is used to declare a preferred model.
 
 Eastward composition estimates remain positive across the displayed classifications. Northward within-type estimates are also positive, but their intervals include zero at geodesic K=3 and K=7. After detrending, the marginal interval is positive while six-component Holm p=0.069; the interval and adjusted test address different coverage/testing questions. **Direction is more stable than threshold-based declarations across settings.**
 

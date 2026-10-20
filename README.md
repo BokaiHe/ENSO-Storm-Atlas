@@ -45,8 +45,8 @@
 ### What actually moves
 <img src="assets/readme/decomposition.png" width="100%" alt="The El Niño centroid shift split into type mix and within-type parts">
 
-> **El Niño thins out the deep-tropical tracks and nudges the rest north.**
-> The eastward shift mainly reflects a change in *which* tracks occur. The northward shift mainly reflects changes *within* track types.
+> **Fewer western tracks, with a northward within-type component.**
+> The eastward point estimate mainly reflects a change in *which* tracks occur. Within-type displacement contributes to the northward contrast. Its direction is consistent across the tested settings, while statistical significance is sensitive to K = 3, K = 7 and detrending in the notebook checks.
 
 ---
 
@@ -98,7 +98,7 @@ To publish: **Settings → Pages → Deploy from a branch → `main` / `docs`**.
 - **ENSO phase:** NOAA CPC ONI for the August–October season. El Niño is ONI ≥ +0.5 and La Niña is ONI ≤ −0.5. The analysis uses one definition throughout.
 - **Significance:** permutation tests that shuffle labels between whole seasons, so storms from the same year are never treated as independent samples.
 - **Track types:** each track is resampled to 16 points and clustered with a single K-Means model. K = 4 has the best silhouette score for K = 3–7.
-- **Type mix vs within type:** the El Niño − La Niña centroid difference is split into two parts, each weighted by the average of the two phases. The 6.7° eastward shift is almost all type mix (5.8°, p = 0.002 at K = 4); type mix remains the dominant component for every K = 3–7. The 2.2° northward shift is mostly within type (1.6°, p = 0.005). That holds for K = 4–7 and after detrending, but not at K = 3.
+- **Type mix vs within type:** the El Niño − La Niña centroid difference is split into two parts, each weighted by the average of the two phases. The 6.7° eastward shift is almost all type mix (5.8°, p = 0.002 at K = 4); type mix remains the dominant component for every K = 3–7. The 2.2° northward shift is mostly within type (1.6°, p = 0.005). The northward direction persists across tested settings, but significance is not stable at K = 3, K = 7 or after detrending in the notebook checks. Website p values are unadjusted and use coordinate-space track resampling. The [research notebook](notebooks/enso_storm_atlas_research.ipynb) adds geodesic refits, marginal 95% intervals and Holm correction: geodesic K = 7 gives +1.11° (95% CI −0.01 to 2.14; Holm p = 0.117), and detrended atlas K = 4 gives Holm p = 0.069.
 - **Single-track classification:** logistic regression with balanced class weights, averaged over the same 10 random season-grouped 10-fold splits. Each feature set is compared with its own shuffled-season null. All nine moments reach AUC 0.63, against a null 5–95% range of 0.41–0.57. The signal is real but weak.
 - **Skewness & kurtosis:** adding them to the 1st and 2nd moments raises AUC by 0.02. The season-bootstrap 95% interval for that gain is −0.045 to +0.083, so the gain is not established.
 - **Limitations:** the samples are small. For 1966–2025 there are 14 La Niña and 15 El Niño seasons. Pre-1966 records miss some short-lived storms. AMO and long-term warming are not controlled. All results are correlations.
